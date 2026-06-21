@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Maskable: content kept within the central safe zone, full-bleed void bg. -->
+  <rect width="512" height="512" fill="#13131E"/>
+  <g opacity="0.5">
+    <rect x="0" y="120" width="512" height="3" fill="#2E2E44"/>
+    <rect x="0" y="250" width="512" height="3" fill="#2E2E44"/>
+    <rect x="0" y="380" width="512" height="3" fill="#2E2E44"/>
+  </g>
+  <text x="248" y="270" text-anchor="middle" dominant-baseline="central"
+        font-family="Archivo, Arial Black, sans-serif" font-weight="900" font-size="320" fill="#FF3D7F">S</text>
+  <rect x="356" y="150" width="40" height="220" fill="#36D8FF"/>
+</svg>

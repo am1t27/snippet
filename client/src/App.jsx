@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGameSocket } from "./useGameSocket";
+import sound from "./sound";
 
 // ---- Shared class fragments (drive the look across every screen) ----
 const EYEBROW = "font-console text-[11px] uppercase tracking-[0.2em] text-dim";
@@ -88,6 +89,7 @@ export default function App() {
   const primedRef = useRef(false);
 
   const primeAudio = () => {
+    sound.unlock(); // resume the Web Audio context on this user gesture
     if (primedRef.current) return;
     const el = audioRef.current;
     if (!el) return;
@@ -151,7 +153,45 @@ export default function App() {
     return () => clearTimeout(t);
   }, [notice, clearNotice]);
 
+  // Sound + mute toggle (persisted in localStorage by the sound module).
+  const [muted, setMutedState] = useState(sound.isMuted());
+  const toggleMute = () => setMutedState(sound.toggleMuted());
+
+  // Screen-reader announcements for phase outcomes (aria-live region below).
+  const [announce, setAnnounce] = useState("");
+
+  // Reveal: play correct/wrong sting and announce my result.
+  useEffect(() => {
+    if (!reveal) return;
+    const mine = (reveal.results || []).find((r) => r.id === myId);
+    if (!mine) return;
+    if (mine.correct) {
+      sound.play("correct");
+      setAnnounce(`Correct. Plus ${mine.pointsEarned} points.`);
+    } else if (mine.answerTimeSeconds != null) {
+      sound.play("wrong");
+      setAnnounce("Wrong answer.");
+    } else {
+      setAnnounce("Time up — no answer.");
+    }
+  }, [reveal, myId]);
+
+  // Game over: fanfare for the winner, soft cue otherwise.
+  useEffect(() => {
+    if (!gameOver) return;
+    const board = gameOver.leaderboard || [];
+    const idx = board.findIndex((r) => r.id === myId);
+    if (idx === 0) {
+      sound.play("win");
+      setAnnounce("Game over. You win!");
+    } else {
+      sound.play("lose");
+      setAnnounce(idx >= 0 ? `Game over. You placed number ${idx + 1}.` : "Game over.");
+    }
+  }, [gameOver, myId]);
+
   const handleGuess = (opt) => {
+    sound.play("select");
     setMyGuess(opt);
     guess(opt);
   };
@@ -171,6 +211,9 @@ export default function App() {
       )}
       {notice && <Toast message={notice} />}
       <ReactionOverlay reactions={reactions} />
+      <div className="sr-only" role="status" aria-live="polite">
+        {announce}
+      </div>
 
       <div className="mx-auto flex min-h-screen max-w-xl flex-col px-5 pt-6 pb-8">
         <Masthead phase={phase} round={round} total={state?.totalRounds} />
@@ -217,6 +260,14 @@ export default function App() {
 
         <footer className={`${EYEBROW} flex items-center justify-between border-t border-rule pt-4`}>
           <span>{connected ? "● Online" : "○ Offline"}</span>
+          <button
+            onClick={toggleMute}
+            aria-pressed={!muted}
+            aria-label={muted ? "Unmute sound effects" : "Mute sound effects"}
+            className="font-console text-[11px] uppercase tracking-[0.2em] text-dim transition-colors hover:text-amber"
+          >
+            {muted ? "♪ Off" : "♪ On"}
+          </button>
           <span className="text-bone">{me ? me.name : "Guest"}</span>
         </footer>
       </div>
@@ -641,6 +692,7 @@ function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGuess, on
               <button
                 onClick={() => onGuess(opt)}
                 disabled={locked}
+                aria-label={`Option ${i + 1}: ${opt}`}
                 className={[
                   "flex w-full items-center gap-4 border px-4 py-4 text-left font-console text-sm uppercase tracking-wide text-bone transition-all",
                   selected ? `ring-2 ${c.sel}` : `border-rule bg-cabinet ${c.hov}`,
@@ -1109,9 +1161,12 @@ function CountdownOverlay({ seconds, round, worth, maxPoints }) {
   useEffect(() => {
     let v = seconds ?? 3;
     setN(v);
+    sound.play("count");
     const id = setInterval(() => {
       v -= 1;
       setN(v);
+      if (v === 0) sound.play("go");
+      else if (v > 0) sound.play("count");
       if (v <= -1) clearInterval(id);
     }, 1000);
     return () => clearInterval(id);

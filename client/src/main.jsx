@@ -8,3 +8,11 @@ createRoot(document.getElementById("root")).render(
     <App />
   </React.StrictMode>
 );
+
+// PWA: register the service worker for installability + faster repeat loads.
+// Harmless if unsupported; never blocks the app.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

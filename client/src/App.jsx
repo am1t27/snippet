@@ -44,7 +44,7 @@ const OPT_COLORS = [
 export default function App() {
   const {
     connected, myId, state, reveal, gameOver, loading, error, roundMeta, countdown, notice,
-    join, start, guess, restart, clearError, clearNotice,
+    roomCode, createRoom, joinRoom, start, guess, restart, clearError, clearNotice,
   } = useGameSocket();
 
   // --- Mobile audio unlock (priming) ---------------------------------------
@@ -70,9 +70,13 @@ export default function App() {
     }
   };
 
-  const handleJoin = (name) => {
+  const handleCreate = (name) => {
     primeAudio();
-    join(name);
+    createRoom(name);
+  };
+  const handleJoinRoom = (code, name) => {
+    primeAudio();
+    joinRoom(code, name);
   };
   const handleStart = (genre) => {
     primeAudio();
@@ -134,9 +138,9 @@ export default function App() {
           {!connected ? (
             <Centered eyebrow="Status" title="Connecting…" />
           ) : !joined ? (
-            <JoinScreen onJoin={handleJoin} />
+            <EntryScreen onCreate={handleCreate} onJoin={handleJoinRoom} />
           ) : phase === "LOBBY" ? (
-            <Lobby players={players} myId={myId} isHost={isHost} onStart={handleStart} />
+            <Lobby players={players} myId={myId} isHost={isHost} onStart={handleStart} code={roomCode} />
           ) : phase === "ROUND_PLAYING" ? (
             <Playing
               state={state}
@@ -184,21 +188,23 @@ function Masthead({ phase, round, total }) {
   );
 }
 
-// ---------- Join ----------
-function JoinScreen({ onJoin }) {
+// ---------- Entry: create or join a room ----------
+function EntryScreen({ onCreate, onJoin }) {
   const [name, setName] = useState("");
-  const submit = (e) => {
-    e.preventDefault();
-    const n = name.trim();
-    if (n) onJoin(n);
-  };
+  const [code, setCode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return (new URLSearchParams(window.location.search).get("room") || "").toUpperCase().slice(0, 4);
+  });
+  const canName = name.trim().length > 0;
   return (
-    <form onSubmit={submit} className="mx-auto w-full max-w-sm animate-rise">
-      <p className="font-coin text-base leading-relaxed text-pink">INSERT COIN</p>
-      <div className="mt-3 h-px w-24 bg-rule" />
-      <p className="mt-4 font-console text-sm text-dim">Pick a handle to play.</p>
+    <div className="mx-auto w-full max-w-sm animate-rise space-y-7">
+      <div>
+        <p className="font-coin text-base leading-relaxed text-pink">INSERT COIN</p>
+        <div className="mt-3 h-px w-24 bg-rule" />
+        <p className="mt-4 font-console text-sm text-dim">Pick a handle, then start or join a room.</p>
+      </div>
 
-      <div className="mt-8 flex items-center border-b-2 border-rule focus-within:border-pink">
+      <div className="flex items-center border-b-2 border-rule focus-within:border-pink">
         <input
           autoFocus
           value={name}
@@ -208,33 +214,56 @@ function JoinScreen({ onJoin }) {
           aria-label="Your handle"
           className="w-full bg-transparent px-1 py-3 font-console text-lg uppercase tracking-widest text-bone placeholder:text-dim focus:outline-none"
         />
-        {name.length === 0 && (
-          <span className="mr-1 h-5 w-2 animate-blink bg-pink" aria-hidden="true" />
-        )}
+        {name.length === 0 && <span className="mr-1 h-5 w-2 animate-blink bg-pink" aria-hidden="true" />}
       </div>
 
-      <button type="submit" disabled={!name.trim()} className={`${BTN_AMBER} mt-6 w-full`}>
-        Press Start
+      <button
+        onClick={() => canName && onCreate(name.trim())}
+        disabled={!canName}
+        className={`${BTN_AMBER} w-full`}
+      >
+        ▶ Create Room
       </button>
-    </form>
+
+      <div>
+        <p className={EYEBROW}>or join with a code</p>
+        <div className="mt-3 flex gap-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 4))}
+            maxLength={4}
+            placeholder="CODE"
+            aria-label="Room code"
+            className="w-28 border border-rule bg-cabinet px-3 py-3 text-center font-console text-lg uppercase tracking-[0.3em] text-bone placeholder:text-dim focus:border-pink focus:outline-none"
+          />
+          <button
+            onClick={() => canName && code && onJoin(code, name.trim())}
+            disabled={!canName || !code}
+            className={`${BTN_GHOST} flex-1`}
+          >
+            Join
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ---------- Lobby ----------
-function Lobby({ players, myId, isHost, onStart }) {
-  const url = typeof window !== "undefined" ? window.location.href : "";
+function Lobby({ players, myId, isHost, onStart, code }) {
   const [copied, setCopied] = useState(false);
   const [genre, setGenre] = useState("HIP-HOP");
+  const joinLink =
+    typeof window !== "undefined" && code ? `${window.location.origin}?room=${code}` : "";
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(joinLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — the field is selectable as a fallback */
+      /* clipboard blocked */
     }
   };
-  const shortUrl = url.length > 40 ? url.slice(0, 39) + "…" : url;
 
   return (
     <div className="space-y-8">
@@ -260,20 +289,14 @@ function Lobby({ players, myId, isHost, onStart }) {
       </div>
 
       <div>
-        <p className={EYEBROW}>Share the room</p>
-        <div className="mt-3 flex gap-2">
-          <input
-            readOnly
-            value={shortUrl}
-            title={url}
-            onFocus={(e) => e.target.select()}
-            aria-label="Room URL"
-            className="min-w-0 flex-1 border border-rule bg-cabinet px-3 py-3 font-console text-xs text-dim focus:outline-none"
-          />
+        <p className={EYEBROW}>Room code</p>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <span className="font-marquee text-4xl font-black tracking-[0.25em] text-amber">{code}</span>
           <button onClick={copy} className={BTN_GHOST}>
-            {copied ? "Copied" : "Copy"}
+            {copied ? "Link copied" : "Copy link"}
           </button>
         </div>
+        <p className="mt-2 font-console text-xs text-dim">Friends join with this code, or your copied link.</p>
       </div>
 
       {isHost ? (

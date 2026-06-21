@@ -18,6 +18,7 @@ export function useGameSocket() {
 
   const [connected, setConnected] = useState(false);
   const [myId, setMyId] = useState(null);
+  const [roomCode, setRoomCode] = useState(null);
   const [state, setState] = useState(null); // latest public state snapshot
   const [reveal, setReveal] = useState(null); // last round reveal (answer + deltas)
   const [gameOver, setGameOver] = useState(null); // final leaderboard
@@ -28,10 +29,12 @@ export function useGameSocket() {
   const [notice, setNotice] = useState(null); // transient bottom toast (player left, new host)
 
   useEffect(() => {
-    // Same-origin connection. In dev, Vite proxies /socket.io to the game
-    // server on :3000 (see vite.config.js). In prod, serve client + server
-    // from one origin and this still resolves correctly.
-    const socket = io(window.location.origin, { transports: ["websocket"] });
+    // In dev, Vite proxies /socket.io to the server on :3000 (same origin). In
+    // prod, the deployed client connects to the backend URL from VITE_SOCKET_URL
+    // (e.g. your Railway URL).
+    const socket = io(import.meta.env.VITE_SOCKET_URL || window.location.origin, {
+      transports: ["websocket"],
+    });
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -40,8 +43,11 @@ export function useGameSocket() {
     });
     socket.on("disconnect", () => setConnected(false));
 
-    // Server confirms our identity on join.
-    socket.on("joined", ({ id }) => setMyId(id));
+    // Server confirms our room + identity.
+    socket.on("roomJoined", ({ code, id }) => {
+      setMyId(id);
+      setRoomCode(code);
+    });
 
     // The authoritative state snapshot. Receiving any state ends a loading
     // screen, and entering a fresh round clears the previous reveal.
@@ -93,7 +99,8 @@ export function useGameSocket() {
   }, []);
 
   // --- The only messages the client may send ---
-  const join = useCallback((name) => socketRef.current?.emit("join", { name }), []);
+  const createRoom = useCallback((name) => socketRef.current?.emit("createRoom", { name }), []);
+  const joinRoom = useCallback((code, name) => socketRef.current?.emit("joinRoom", { code, name }), []);
   const start = useCallback((genre) => socketRef.current?.emit("startGame", { genre }), []);
   const guess = useCallback((option) => socketRef.current?.emit("guess", { option }), []);
   const restart = useCallback(() => socketRef.current?.emit("restart"), []);
@@ -111,7 +118,9 @@ export function useGameSocket() {
     roundMeta,
     countdown,
     notice,
-    join,
+    roomCode,
+    createRoom,
+    joinRoom,
     start,
     guess,
     restart,

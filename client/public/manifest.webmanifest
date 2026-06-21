@@ -1,0 +1,19 @@
+{
+  "name": "Snippet — Music Guessing Game",
+  "short_name": "Snippet",
+  "description": "Real-time multiplayer music guessing game. Hear a snippet, name the track.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#13131E",
+  "theme_color": "#13131E",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

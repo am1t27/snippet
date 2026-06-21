@@ -67,10 +67,14 @@ function clearTimers() {
   countdownTimer = null;
 }
 
-// Trim and bound a player-supplied name. Never trust client input.
+// S2 (sanitize): allow letters, digits, space, underscore, and hyphen only;
+// trim; cap at 20 chars. Returns "" if nothing usable remains (the join handler
+// rejects empty names). Never trust client input.
 function cleanName(raw) {
-  const name = String(raw ?? "").trim().slice(0, 20);
-  return name.length > 0 ? name : "Player";
+  return String(raw ?? "")
+    .replace(/[^a-zA-Z0-9 _\-]/g, "")
+    .trim()
+    .slice(0, 20);
 }
 
 // Fisher-Yates shuffle so the correct option is never in a fixed slot.
@@ -184,7 +188,7 @@ function publicState() {
 
 // Push the current public state to everyone in the room.
 function broadcastState() {
-  io.emit("state", publicState());
+  io.emit("state", publicState()); // SAFE: publicState omits room.correct
 }
 
 // True when every connected player has locked in a guess this round.
@@ -367,6 +371,8 @@ function endRound() {
     .sort((a, b) => b.score - a.score)
     .map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score }));
 
+  // The round is OVER, so disclosing the correct answer here is intentional and
+  // safe — clients never received it during play.
   io.emit("reveal", {
     correct: correctName,
     round: room.round,
@@ -428,7 +434,7 @@ const io = new Server(httpServer, {
 
 io.on("connection", (socket) => {
   // Always send the joining socket the current state immediately.
-  socket.emit("state", publicState());
+  socket.emit("state", publicState()); // SAFE: publicState omits room.correct
 
   // --- join: enter the lobby ---
   socket.on("join", (payload) => {
@@ -441,13 +447,22 @@ io.on("connection", (socket) => {
       return;
     }
     if (players.size >= MAX_PLAYERS) {
+      // S3 (room cap): reject the 9th player. Client renders this uppercased
+      // as "ROOM IS FULL." via the error bar.
       socket.emit("errorMsg", { message: "Room is full." });
+      return;
+    }
+
+    // S2: reject names that are empty after sanitization.
+    const name = cleanName(payload && payload.name);
+    if (!name) {
+      socket.emit("errorMsg", { message: "Enter a valid handle." });
       return;
     }
 
     players.set(socket.id, {
       id: socket.id,
-      name: cleanName(payload && payload.name),
+      name,
       score: 0,
       streak: 0,
       hasGuessed: false,
@@ -455,7 +470,7 @@ io.on("connection", (socket) => {
       lastCorrect: false,
     });
 
-    socket.emit("joined", { id: socket.id });
+    socket.emit("joined", { id: socket.id }); // SAFE: no correct answer field
     broadcastState();
   });
 
@@ -481,7 +496,7 @@ io.on("connection", (socket) => {
 
     // LOBBY -> ROUND_PLAYING: fetch the song pool once for the whole game.
     room.loading = true;
-    io.emit("loading", { message: "Loading songs..." });
+    io.emit("loading", { message: "Loading songs..." }); // SAFE: no correct answer field
 
     const requested = String(payload?.genre ?? "").toLowerCase();
     room.genre = ALLOWED_GENRES.includes(requested) ? requested : "hip-hop";
@@ -525,7 +540,8 @@ io.on("connection", (socket) => {
       socket.emit("errorMsg", { message: "You are not in the game." });
       return;
     }
-    // Reject duplicate guesses: one per player per round.
+    // S1 (rate limit): one guess per player per round. A second guess in the
+    // same round is rejected here, before any state changes.
     if (player.hasGuessed) {
       socket.emit("errorMsg", { message: "Already guessed this round." });
       return;

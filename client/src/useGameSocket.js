@@ -170,6 +170,21 @@ export function useGameSocket() {
   const start = useCallback((settings) => socketRef.current?.emit("startGame", settings || {}), []);
   const guess = useCallback((option) => socketRef.current?.emit("guess", { option }), []);
   const restart = useCallback(() => socketRef.current?.emit("restart"), []);
+  // Leave the current room: forget the rejoin session and cycle the socket so
+  // the server drops us, then land back fresh (no auto-rejoin).
+  const leaveRoom = useCallback(() => {
+    clearSession();
+    socketRef.current?.disconnect();
+    setRoomCode(null);
+    setState(null);
+    setReveal(null);
+    setGameOver(null);
+    setMessages([]);
+    setReactions([]);
+    setCountdown(null);
+    setRoundMeta(null);
+    socketRef.current?.connect();
+  }, []);
   const sendChat = useCallback((text) => socketRef.current?.emit("chat", { text }), []);
   const sendReaction = useCallback((token) => socketRef.current?.emit("react", { token }), []);
   const clearError = useCallback(() => setError(null), []);
@@ -195,6 +210,7 @@ export function useGameSocket() {
     start,
     guess,
     restart,
+    leaveRoom,
     sendChat,
     sendReaction,
     clearError,

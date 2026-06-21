@@ -137,6 +137,14 @@ function speedBonusFor(elapsedMs) {
   return Math.round(MAX_SPEED_BONUS * ratio);
 }
 
+// Streak bonus: 2 correct in a row +50, 3 +100, 4 or more +200 (Feature 2).
+function streakBonusFor(streak) {
+  if (streak >= 4) return 200;
+  if (streak === 3) return 100;
+  if (streak === 2) return 50;
+  return 0;
+}
+
 // Build the public snapshot of game state.
 // SECURITY: this serializer omits `room.correct` by construction, so the
 // answer can never leak through a state broadcast.
@@ -198,6 +206,7 @@ function resetToLobby() {
   room.guesses = new Map();
   for (const p of players.values()) {
     p.score = 0;
+    p.streak = 0;
     p.hasGuessed = false;
     p.lastRoundScore = 0;
     p.lastCorrect = false;
@@ -284,8 +293,15 @@ function endRound() {
     const g = room.guesses.get(p.id) || null;
     const answered = g != null;
     const isCorrect = answered && g.option === correctName;
-    const pointsEarned = isCorrect ? questionValue + speedBonusFor(g.elapsedMs) : 0;
     const answerTimeSeconds = answered ? Math.round(g.elapsedMs / 10) / 100 : null;
+
+    // Streak: consecutive correct answers earn an escalating bonus.
+    p.streak = isCorrect ? (p.streak || 0) + 1 : 0;
+    const streakBonus = isCorrect ? streakBonusFor(p.streak) : 0;
+
+    const pointsEarned = isCorrect
+      ? questionValue + speedBonusFor(g.elapsedMs) + streakBonus
+      : 0;
 
     // Apply to running totals now, not mid-round.
     p.score += pointsEarned;
@@ -302,6 +318,8 @@ function endRound() {
       name: p.name,
       correct: isCorrect,
       pointsEarned,
+      streakBonus,
+      currentStreak: p.streak,
       answerTimeSeconds,
       score: p.score,
       gained: pointsEarned, // alias kept for the existing client
@@ -398,6 +416,7 @@ io.on("connection", (socket) => {
       id: socket.id,
       name: cleanName(payload && payload.name),
       score: 0,
+      streak: 0,
       hasGuessed: false,
       lastRoundScore: 0,
       lastCorrect: false,
@@ -453,8 +472,11 @@ io.on("connection", (socket) => {
 
     room.pool = pool;
     room.usedTrackIds = new Set();
-    // Reset scores for a clean game.
-    for (const p of players.values()) p.score = 0;
+    // Reset scores + streaks for a clean game.
+    for (const p of players.values()) {
+      p.score = 0;
+      p.streak = 0;
+    }
     startRound(1);
   });
 

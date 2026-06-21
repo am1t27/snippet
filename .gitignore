@@ -15,3 +15,9 @@ _*.mjs
 # build output
 client/dist/
 dist/
+
+# env (never commit real secrets; .env.example is fine)
+.env
+.env.local
+client/.env
+client/.env.local

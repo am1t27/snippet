@@ -98,6 +98,19 @@ describe("fetchSongs (mocked iTunes)", () => {
     expect(titles).toContain("you know the drill (feat. x)");
   });
 
+  it('biases toward "new" (last ~3 years)', async () => {
+    const now = new Date().getFullYear();
+    const REC = [
+      { trackId: 301, trackName: "Old One", artistName: "A", previewUrl: "u", trackTimeMillis: 30000, releaseDate: "2005-01-01", primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 302, trackName: "Fresh One", artistName: "B", previewUrl: "u", trackTimeMillis: 30000, releaseDate: `${now}-01-01`, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 303, trackName: "Fresh Two", artistName: "C", previewUrl: "u", trackTimeMillis: 30000, releaseDate: `${now - 1}-06-01`, primaryGenreName: "Hip-Hop/Rap" },
+    ];
+    fetch.mockResolvedValue(ok(REC));
+    const out = await fetchSongs("rap", 2, { decade: "new" });
+    expect(out.length).toBe(2);
+    expect(out.every((t) => t.releaseYear >= now - 2)).toBe(true);
+  });
+
   it("caches by genre (one network call for repeated same-genre fetches)", async () => {
     fetch.mockResolvedValue(ok(RESULTS));
     await fetchSongs("rap", 3);

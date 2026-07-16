@@ -15,7 +15,9 @@ export const ROUND_CHOICES = [10, 5, 15];
 export const TIMER_CHOICES = [10000, 7500, 15000];
 export const OPTION_CHOICES = [4, 3, 6];
 export const MODE_CHOICES = ["TITLE", "ARTIST"];
-export const DECADE_CHOICES = ["all", "2020s", "2010s", "2000s", "1990s"];
+// "new" = last ~3 years (resolved dynamically in the fetcher); the rest are
+// fixed decade buckets. First item is the default.
+export const DECADE_CHOICES = ["all", "new", "2020s", "2010s", "2000s", "1990s"];
 // Clip start: RANDOM plays from a random offset; INTRO (Heardle-style) plays
 // from the very start of the track. The offset itself is applied client-side;
 // the server just records the choice and tells the client via state.clip.

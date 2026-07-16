@@ -339,6 +339,7 @@ function resetToLobby(room) {
   room.roundStartedAt = 0;
   room.guesses = new Map();
   room.pending = null;
+  room.lastReveal = null;
   room.correctArtist = null;
   room.correctTrackName = null;
   room.history = [];
@@ -346,14 +347,29 @@ function resetToLobby(room) {
   // last choices.
   for (const t of room.disconnectGrace.values()) clearTimeout(t);
   room.disconnectGrace.clear();
+  // Drop anyone still held disconnected instead of resurrecting them as a
+  // permanent "connected" ghost — a ghost would keep allGuessed() from ever
+  // being true (early round-end never fires), occupy a MAX_PLAYERS slot, and
+  // stop the room from ever being deleted once the real players leave.
+  const prevHostId = [...room.players.keys()].find((id) => !room.players.get(id).spectator);
+  for (const [id, p] of [...room.players]) {
+    if (!p.connected) {
+      room.players.delete(id);
+      io.to(room.code).emit("playerLeft", { name: p.name }); // SAFE
+    }
+  }
   for (const p of room.players.values()) {
     p.score = 0;
     p.streak = 0;
     p.hasGuessed = false;
     p.lastRoundScore = 0;
     p.lastCorrect = false;
-    p.connected = true;
     p.spectator = false; // promote any watchers into the rematch
+  }
+  // If the held host was dropped, hand the crown to the new first player.
+  const newHostId = [...room.players.keys()][0];
+  if (newHostId && newHostId !== prevHostId) {
+    io.to(room.code).emit("newHost", { name: room.players.get(newHostId).name }); // SAFE
   }
 }
 
@@ -504,7 +520,7 @@ function endRound(room) {
   // The round is OVER, so disclosing the answer here is intentional and safe.
   // `correct` is the gradable value (title or artist); `track` always carries
   // both so the client can show the full song regardless of mode.
-  io.to(room.code).emit("reveal", {
+  const revealPayload = {
     correct: correctName,
     track: { trackName: room.correctTrackName, artistName: room.correctArtist },
     mode: room.settings.mode,
@@ -513,7 +529,11 @@ function endRound(room) {
     results,
     roundWinner,
     leaderboard,
-  });
+  };
+  // Retain so a mid-reveal rejoiner can be re-sent the answer/results instead
+  // of rendering an empty "No one got it" screen.
+  room.lastReveal = revealPayload;
+  io.to(room.code).emit("reveal", revealPayload);
   broadcastState(room);
 
   maybeRefreshPool(room);
@@ -811,6 +831,9 @@ io.on("connection", (socket) => {
     socket.data.token = token;
     socket.emit("roomJoined", { code: room.code, id: socket.id, token, spectator: target.spectator }); // SAFE
     // Re-send the current phase's payload so the rejoiner's UI is correct.
+    if (room.phase === PHASE.ROUND_REVEAL && room.lastReveal) {
+      socket.emit("reveal", room.lastReveal); // SAFE — round is over, answer is public
+    }
     if (room.phase === PHASE.GAME_OVER) {
       socket.emit("gameOver", {
         leaderboard: [...room.players.values()]

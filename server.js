@@ -570,7 +570,27 @@ const httpServer = http.createServer(async (req, res) => {
   res.end(JSON.stringify({ ok: true }));
 });
 
-const io = new Server(httpServer, { cors: { origin: CLIENT_ORIGIN } });
+// Socket.IO handshake Origin enforcement. Browsers don't apply CORS to
+// WebSocket, so cors.origin alone can't stop other sites from opening a socket.
+// This rejects the handshake server-side when the Origin isn't in the allowlist.
+// Requests with no Origin header (non-browser clients, health checks) pass —
+// Origin is only meaningful from browsers, which is exactly the cross-site abuse
+// this blocks. It is NOT a hard auth boundary (Origin is spoofable off-browser);
+// the per-IP/room caps remain the real backstop.
+function originAllowed(origin) {
+  if (!origin) return true; // non-browser client
+  if (CLIENT_ORIGIN === "*") return true; // dev
+  if (Array.isArray(CLIENT_ORIGIN)) return CLIENT_ORIGIN.includes(origin);
+  return origin === CLIENT_ORIGIN;
+}
+
+const io = new Server(httpServer, {
+  cors: { origin: CLIENT_ORIGIN },
+  allowRequest: (req, cb) => {
+    const ok = originAllowed(req.headers.origin);
+    cb(ok ? null : "origin_not_allowed", ok);
+  },
+});
 
 if (IS_PROD && Array.isArray(CLIENT_ORIGIN) && CLIENT_ORIGIN.length === 0) {
   log.warn(

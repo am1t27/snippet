@@ -90,10 +90,32 @@ function normalize(results) {
       artistName: r.artistName,
       previewUrl: r.previewUrl,
       trackId: r.trackId,
+      primaryGenreName: r.primaryGenreName || null,
       releaseYear: r.releaseDate ? Number(String(r.releaseDate).slice(0, 4)) : null,
     });
   }
   return out;
+}
+
+// Genre filtering. The iTunes `term` search is fuzzy free-text, so a search for
+// "hip-hop" also returns Pop, Country, R&B, etc. We keep only tracks whose
+// iTunes primaryGenreName matches the requested genre family. Drill/trap have no
+// distinct iTunes genre — they're labelled "Hip-Hop/Rap" — so they map there.
+const GENRE_MATCHERS = {
+  "hip-hop": /hip-?hop|rap/i,
+  rap: /hip-?hop|rap/i,
+  drill: /hip-?hop|rap/i,
+  trap: /hip-?hop|rap/i,
+  "r&b": /r&b|soul/i,
+};
+// Below this many on-genre tracks we fall back to the unfiltered pool so a game
+// can always start (comfortably above the max options-per-round of 6).
+const MIN_GENRE_POOL = 10;
+function filterGenre(pool, genre) {
+  const re = GENRE_MATCHERS[String(genre ?? "").toLowerCase()];
+  if (!re) return pool;
+  const on = pool.filter((t) => re.test(t.primaryGenreName || ""));
+  return on.length >= MIN_GENRE_POOL ? on : pool;
 }
 
 // Decade filtering. Ranges are inclusive; "all" (or unknown) means no filter.
@@ -153,7 +175,9 @@ export async function fetchSongs(genre, count, opts = {}) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`iTunes API responded ${res.status}`);
     const data = await res.json();
-    pool = normalize(data.results);
+    // Filter to the requested genre BEFORE caching, so the cached pool (keyed by
+    // this genre term) is already free of off-genre contamination.
+    pool = filterGenre(normalize(data.results), term);
   } catch (err) {
     // On a network failure, fall back to stale cache if we have any.
     if (cached) return pickFrom(cached.pool, n, decade);

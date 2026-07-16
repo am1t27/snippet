@@ -73,6 +73,31 @@ describe("fetchSongs (mocked iTunes)", () => {
     expect(out.some((t) => t.primaryGenreName === "R&B/Soul")).toBe(false);
   });
 
+  it("drops bare genre-word titles and collapses near-duplicate titles (drill/trap fix)", async () => {
+    const DRILLY = [
+      // 20 songs literally titled "Drill" + case/paren variants — all one title.
+      ...Array.from({ length: 20 }, (_, i) => ({ trackId: 100 + i, trackName: "Drill", artistName: "A" + i, previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" })),
+      { trackId: 200, trackName: "DRILL", artistName: "B", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 201, trackName: "Drill (Instrumental)", artistName: "C", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      // real, varied titles that must survive.
+      { trackId: 202, trackName: "Welcome to the Party", artistName: "D", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 203, trackName: "Dior", artistName: "E", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 204, trackName: "You Know the Drill (feat. X)", artistName: "F", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+    ];
+    fetch.mockResolvedValue(ok(DRILLY));
+    const out = await fetchSongs("drill", 10);
+    const titles = out.map((t) => t.trackName.toLowerCase());
+    // No option is the bare genre word.
+    expect(titles.includes("drill")).toBe(false);
+    expect(titles.includes("drill (instrumental)")).toBe(false);
+    // Distinct base titles only (no visual duplicates).
+    const base = out.map((t) => t.trackName.toLowerCase().replace(/\s*[([].*$/, "").replace(/[^a-z0-9]/g, ""));
+    expect(new Set(base).size).toBe(base.length);
+    // The real songs survived (incl. "You Know the Drill", which is not bare "drill").
+    expect(titles).toContain("welcome to the party");
+    expect(titles).toContain("you know the drill (feat. x)");
+  });
+
   it("caches by genre (one network call for repeated same-genre fetches)", async () => {
     fetch.mockResolvedValue(ok(RESULTS));
     await fetchSongs("rap", 3);

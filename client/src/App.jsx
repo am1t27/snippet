@@ -192,7 +192,6 @@ export default function App() {
     if (phase === "LOBBY") myCorrectRef.current = 0;
   }, [phase]);
 
-  // Leaving an active game asks first; lobby/game-over leave freely.
   const handleLeave = () => {
     if (joined) {
       if (phase !== "LOBBY" && phase !== "GAME_OVER") {
@@ -214,7 +213,7 @@ export default function App() {
     setMenuOpen(false);
   };
 
-  // Route into the room flow from a Home game card (leaving any current game).
+  // Route into the room flow from a Home game card.
   const openGame = (game) => {
     if (!game || game.status !== "play") return;
     if (joined) {
@@ -940,11 +939,11 @@ function Lobby({ players, myId, isHost, onStart, code, messages, onChat, clipPre
         </p>
       )}
 
-      <Chat messages={messages} onChat={onChat} myId={myId} title="Lobby chat" />
-
       <button onClick={onLeave} className={`${BTN_GHOST} w-full`}>
         ✕ Leave Room
       </button>
+
+      <Chat messages={messages} onChat={onChat} myId={myId} title="Lobby chat" />
     </div>
   );
 }

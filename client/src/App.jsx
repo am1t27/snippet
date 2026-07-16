@@ -311,6 +311,16 @@ export default function App() {
         />
       )}
 
+      {!connected && joined && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-0 top-0 z-50 bg-amber px-4 py-2 text-center font-console text-xs uppercase tracking-[0.2em] text-black"
+        >
+          Reconnecting…
+        </div>
+      )}
+
       <div className="mx-auto flex min-h-screen max-w-xl flex-col px-5 pt-6 pb-8">
         <Masthead
           phase={phase}
@@ -321,7 +331,7 @@ export default function App() {
         />
 
         <main className="flex flex-1 flex-col justify-start py-8">
-          {!connected ? (
+          {!connected && !joined ? (
             <Centered eyebrow="Status" title="Connecting…" />
           ) : !joined && view === "home" ? (
             <Home games={GAMES} stats={stats} onOpen={openGame} onProfile={() => setView("profile")} />
@@ -359,7 +369,11 @@ export default function App() {
               audioRef={audioRef}
             />
           ) : phase === "ROUND_REVEAL" ? (
-            <Reveal reveal={reveal} myId={myId} onReact={sendReaction} players={players} />
+            reveal ? (
+              <Reveal reveal={reveal} myId={myId} onReact={sendReaction} players={players} />
+            ) : (
+              <Centered eyebrow="Status" title="Catching up…" />
+            )
           ) : phase === "GAME_OVER" ? (
             <GameOver
               gameOver={gameOver}
@@ -378,7 +392,7 @@ export default function App() {
             onClick={toggleMute}
             aria-pressed={!muted}
             aria-label={muted ? "Unmute sound effects" : "Mute sound effects"}
-            className="font-console text-[11px] uppercase tracking-[0.2em] text-dim transition-colors hover:text-amber"
+            className="inline-flex min-h-11 items-center font-console text-[11px] uppercase tracking-[0.2em] text-dim transition-colors hover:text-amber"
           >
             {muted ? "♪ Off" : "♪ On"}
           </button>
@@ -407,7 +421,7 @@ function Masthead({ phase, round, total, onMenu, onBrand }) {
           <button
             onClick={onMenu}
             aria-label="Open menu"
-            className="font-console text-2xl leading-none text-dim transition-colors hover:text-amber"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center font-console text-2xl leading-none text-dim transition-colors hover:text-amber"
           >
             ≡
           </button>
@@ -597,7 +611,7 @@ function Profile({ stats, onBack }) {
   ];
   return (
     <div className="animate-rise space-y-6">
-      <button onClick={onBack} className={`${EYEBROW} hover:text-amber`}>
+      <button onClick={onBack} className={`${EYEBROW} inline-flex min-h-11 items-center hover:text-amber`}>
         ‹ Home
       </button>
       <div>
@@ -755,7 +769,7 @@ function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
   return (
     <div className="mx-auto w-full max-w-sm animate-rise space-y-6">
       {onHome && (
-        <button onClick={onHome} className={`${EYEBROW} hover:text-amber`}>
+        <button onClick={onHome} className={`${EYEBROW} inline-flex min-h-11 items-center hover:text-amber`}>
           ‹ Home
         </button>
       )}
@@ -958,7 +972,7 @@ function Lobby({ players, myId, isHost, onStart, code, messages, onChat, clipPre
                   <button
                     key={g}
                     onClick={() => setGenre(g)}
-                    className={`px-3 py-2 font-console text-xs uppercase tracking-[0.2em] transition-colors ${
+                    className={`min-h-11 px-3 py-2 font-console text-xs uppercase tracking-[0.2em] transition-colors ${
                       active
                         ? "bg-pink text-black"
                         : "border border-rule text-dim hover:border-pink hover:text-pink"
@@ -1010,7 +1024,7 @@ function SettingRow({ label, options, value, onChange }) {
               key={String(o.value)}
               onClick={() => onChange(o.value)}
               aria-pressed={active}
-              className={`min-w-[2.75rem] px-2.5 py-1.5 font-console text-xs uppercase tracking-[0.12em] transition-colors ${
+              className={`min-h-11 min-w-[2.75rem] px-2.5 py-1.5 font-console text-xs uppercase tracking-[0.12em] transition-colors ${
                 active
                   ? "bg-pink text-black"
                   : "border border-rule text-dim hover:border-pink hover:text-pink"
@@ -1065,7 +1079,9 @@ function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGuess, on
         }).catch(() => setNeedsTap(true));
       }
       if (pauseTimer) clearTimeout(pauseTimer);
-      pauseTimer = setTimeout(() => el.pause(), 10000); // stop after 10s
+      // Play for the whole round, not a hardcoded 10s (a 15s round would
+      // otherwise sit in silence for its final seconds).
+      pauseTimer = setTimeout(() => el.pause(), state.roundMs ?? 10000);
     };
     startRef.current = start;
 
@@ -1511,7 +1527,7 @@ function ReactionBar({ onReact }) {
           key={t}
           onClick={() => onReact(t)}
           aria-label={`React ${t}`}
-          className="min-w-[2.5rem] border border-rule bg-cabinet px-2 py-1.5 font-console text-xs text-dim transition-[transform,color,border-color] hover:border-amber hover:text-amber active:scale-95"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center border border-rule bg-cabinet px-2 py-1.5 font-console text-xs text-dim transition-[transform,color,border-color] hover:border-amber hover:text-amber active:scale-95"
         >
           {t}
         </button>

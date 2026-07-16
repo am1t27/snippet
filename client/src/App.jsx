@@ -74,6 +74,7 @@ const MODE_OPTS = [
 ];
 const DECADE_OPTS = [
   { label: "All", value: "all" },
+  { label: "New", value: "new" },
   { label: "2020s", value: "2020s" },
   { label: "2010s", value: "2010s" },
   { label: "2000s", value: "2000s" },

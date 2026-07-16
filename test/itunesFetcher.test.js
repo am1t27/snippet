@@ -45,6 +45,34 @@ describe("fetchSongs (mocked iTunes)", () => {
     expect(fallback.length).toBe(3);
   });
 
+  it("filters out off-genre tracks (iTunes term search is fuzzy)", async () => {
+    const MIXED = [
+      { trackId: 11, trackName: "H1", artistName: "R1", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 12, trackName: "H2", artistName: "R2", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Korean Hip-Hop" },
+      { trackId: 13, trackName: "P1", artistName: "R3", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Pop" },
+      { trackId: 14, trackName: "C1", artistName: "R4", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Country" },
+      { trackId: 15, trackName: "S1", artistName: "R5", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "R&B/Soul" },
+      { trackId: 16, trackName: "H3", artistName: "R6", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 17, trackName: "H4", artistName: "R7", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 18, trackName: "H5", artistName: "R8", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 19, trackName: "H6", artistName: "R9", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 20, trackName: "H7", artistName: "R10", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 21, trackName: "H8", artistName: "R11", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 22, trackName: "H9", artistName: "R12", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 23, trackName: "H10", artistName: "R13", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+      { trackId: 24, trackName: "H11", artistName: "R14", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
+    ];
+    // 11 on-genre (10 Hip-Hop/Rap + 1 Korean Hip-Hop) clears MIN_GENRE_POOL, so
+    // the off-genre Pop/Country/R&B tracks are actually dropped (not fallback).
+    fetch.mockResolvedValue(ok(MIXED));
+    const out = await fetchSongs("hip-hop", 14);
+    // Pop, Country, and R&B/Soul must be gone; Korean Hip-Hop stays (it is hip-hop).
+    expect(out.every((t) => /hip-hop|rap/i.test(t.primaryGenreName))).toBe(true);
+    expect(out.some((t) => t.primaryGenreName === "Pop")).toBe(false);
+    expect(out.some((t) => t.primaryGenreName === "Country")).toBe(false);
+    expect(out.some((t) => t.primaryGenreName === "R&B/Soul")).toBe(false);
+  });
+
   it("caches by genre (one network call for repeated same-genre fetches)", async () => {
     fetch.mockResolvedValue(ok(RESULTS));
     await fetchSongs("rap", 3);

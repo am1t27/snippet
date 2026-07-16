@@ -118,6 +118,46 @@ function filterGenre(pool, genre) {
   return on.length >= MIN_GENRE_POOL ? on : pool;
 }
 
+// Search seeds per genre. The iTunes `term` search matches ALL fields, so a
+// search for a genre word that is also a common song title ("drill", "trap")
+// returns mostly songs literally titled that word — making the options a wall of
+// identical labels. For those genres we search varied scene/artist seeds instead
+// (picked at random per fetch for cross-game variety) and rely on the
+// primaryGenreName filter for genre accuracy. Genres whose word doesn't collide
+// with titles (hip-hop, rap, r&b) use the genre itself (the default).
+const SEARCH_SEEDS = {
+  drill: ["pop smoke", "central cee", "brooklyn drill", "uk drill"],
+  trap: ["young thug", "migos", "future"],
+};
+
+// Canonical form of a track title for de-duplication: drop a trailing
+// "(feat…)"/"[remix]"/"(instrumental)" suffix, then keep only alphanumerics.
+// "Drill", "DRILL", "Drill (Instrumental)" all collapse to "drill".
+function baseTitle(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/\s*[([].*$/, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+// Remove tracks whose title is just the genre word ("Drill"/"Trap"), and keep
+// only the first track for each distinct base title so options never repeat a
+// label. Applied to the genre-filtered pool before caching.
+function dedupeByTitle(pool, genre) {
+  const genreWord = baseTitle(genre);
+  const seen = new Set();
+  const out = [];
+  for (const t of pool) {
+    const b = baseTitle(t.trackName);
+    if (!b) continue;
+    if (genreWord && b === genreWord) continue; // bare genre-word title
+    if (seen.has(b)) continue; // near-duplicate label
+    seen.add(b);
+    out.push(t);
+  }
+  return out;
+}
+
 // Decade filtering. Ranges are inclusive; "all" (or unknown) means no filter.
 const DECADE_RANGES = {
   "2020s": [2020, 2029],
@@ -148,11 +188,16 @@ function pickFrom(pool, n, decade) {
 // ("2020s" | "2010s" | "2000s" | "1990s" | "all") biases the sample toward a
 // decade, falling back to the full pool when too few match.
 export async function fetchSongs(genre, count, opts = {}) {
-  const term = String(genre ?? "").trim();
-  if (!term) throw new Error("genre is required");
+  const g = String(genre ?? "").trim().toLowerCase();
+  if (!g) throw new Error("genre is required");
 
   const n = Number.isFinite(count) ? Math.floor(count) : 0;
   if (n <= 0) return [];
+
+  // The actual iTunes query: a scene/artist seed for genres whose word collides
+  // with song titles, otherwise the genre word itself.
+  const seeds = SEARCH_SEEDS[g] || [g];
+  const term = seeds[Math.floor(Math.random() * seeds.length)];
 
   const decade = (opts && opts.decade) || "all";
   const key = term.toLowerCase();
@@ -175,9 +220,9 @@ export async function fetchSongs(genre, count, opts = {}) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`iTunes API responded ${res.status}`);
     const data = await res.json();
-    // Filter to the requested genre BEFORE caching, so the cached pool (keyed by
-    // this genre term) is already free of off-genre contamination.
-    pool = filterGenre(normalize(data.results), term);
+    // Filter to the requested genre and collapse duplicate/genre-word titles
+    // BEFORE caching, so the cached pool (keyed by this seed) is clean.
+    pool = dedupeByTitle(filterGenre(normalize(data.results), g), g);
   } catch (err) {
     // On a network failure, fall back to stale cache if we have any.
     if (cached) return pickFrom(cached.pool, n, decade);

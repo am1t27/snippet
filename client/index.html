@@ -3,6 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!--
+      Content-Security-Policy (I3 hardening). Allows: our own bundle, Google
+      Identity Services (accounts.google.com + gstatic), Google Fonts, iTunes
+      preview audio, and Socket.IO to any https/wss backend. connect-src keeps
+      ws:/wss: so the dev proxy and any deployed backend work. Tighten
+      connect-src to your exact backend origin once it's fixed.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+        script-src 'self' https://accounts.google.com https://apis.google.com https://www.gstatic.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: https:;
+        media-src 'self' https: blob:;
+        frame-src https://accounts.google.com;
+        connect-src 'self' https: ws: wss:;
+        base-uri 'self';
+        object-src 'none'"
+    />
     <title>Snippet</title>
     <meta name="description" content="Real-time multiplayer music guessing game. Hear a snippet, name the track." />
     <!-- PWA -->

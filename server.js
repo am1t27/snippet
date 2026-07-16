@@ -27,10 +27,20 @@ import { initStorage, recordMatch, topScores } from "./storage.js";
 
 // ----- Configuration -----
 const PORT = process.env.PORT || 3000;
-// Comma-separated allowlist of client origins (e.g. your Vercel URL). "*" in dev.
+const IS_PROD = process.env.NODE_ENV === "production";
+// Comma-separated allowlist of client origins (e.g. your Vercel URL). "*" in dev
+// only. In production an unset allowlist fails CLOSED (no cross-origin allowed)
+// instead of defaulting to "*", so a misconfigured deploy can't be embedded and
+// driven by arbitrary sites.
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN
   ? process.env.CLIENT_ORIGIN.split(",").map((s) => s.trim())
+  : IS_PROD
+  ? []
   : "*";
+// Abuse caps (env-overridable). Bound total rooms and connections-per-IP so a
+// flood of sockets can't exhaust memory (createRoom/quickPlay each open a room).
+const MAX_ROOMS = Number(process.env.MAX_ROOMS) || 500;
+const MAX_CONN_PER_IP = Number(process.env.MAX_CONN_PER_IP) || 30;
 const MAX_PLAYERS = 8;
 const MAX_SPECTATORS = 16; // watchers allowed per room (don't count toward MAX_PLAYERS)
 const REJOIN_GRACE_MS = 60000; // hold a disconnected player's slot this long mid-game
@@ -144,6 +154,16 @@ function rateLimited(socket, key, max, windowMs) {
   socket.data.rl[key] = hits;
   return false;
 }
+
+// Best-effort client IP for per-IP connection caps. Honors X-Forwarded-For
+// (first hop) when set, since the server usually sits behind a proxy/CDN.
+function ipOf(socket) {
+  const fwd = socket.handshake.headers["x-forwarded-for"];
+  if (fwd) return String(fwd).split(",")[0].trim();
+  return socket.handshake.address || "unknown";
+}
+// Live connection count per IP (incremented on connect, decremented on disconnect).
+const connectionsByIp = new Map();
 
 // ----- Membership helpers -----
 
@@ -525,8 +545,16 @@ function gameOver(room) {
 
 // ----- HTTP + Socket.IO -----
 const httpServer = http.createServer(async (req, res) => {
-  const cors = Array.isArray(CLIENT_ORIGIN) ? CLIENT_ORIGIN[0] : CLIENT_ORIGIN;
-  res.setHeader("Access-Control-Allow-Origin", cors || "*");
+  // Reflect the request origin only when it's allowed. In prod with an empty
+  // allowlist no CORS header is sent (fail closed); in dev ("*") all are allowed.
+  const reqOrigin = req.headers.origin;
+  let allowOrigin = "";
+  if (Array.isArray(CLIENT_ORIGIN)) {
+    if (reqOrigin && CLIENT_ORIGIN.includes(reqOrigin)) allowOrigin = reqOrigin;
+  } else {
+    allowOrigin = CLIENT_ORIGIN; // "*" in dev
+  }
+  if (allowOrigin) res.setHeader("Access-Control-Allow-Origin", allowOrigin);
 
   // Global leaderboard (only meaningful when DATABASE_URL is configured).
   if (req.method === "GET" && req.url && req.url.startsWith("/leaderboard")) {
@@ -536,13 +564,19 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
-  let players = 0;
-  for (const r of rooms.values()) players += r.players.size;
+  // Health check only — deliberately no room/player counts, so operational
+  // detail isn't exposed to arbitrary callers.
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ ok: true, rooms: rooms.size, players }));
+  res.end(JSON.stringify({ ok: true }));
 });
 
 const io = new Server(httpServer, { cors: { origin: CLIENT_ORIGIN } });
+
+if (IS_PROD && Array.isArray(CLIENT_ORIGIN) && CLIENT_ORIGIN.length === 0) {
+  log.warn(
+    "CLIENT_ORIGIN is unset in production — cross-origin clients are blocked (fail closed). Set CLIENT_ORIGIN to your web origin(s), e.g. https://yourapp.vercel.app"
+  );
+}
 
 // ----- Optional, env-gated scale/observability hooks -----
 // Each is DORMANT unless its env var is set AND the package is installed. They
@@ -600,9 +634,33 @@ process.on("unhandledRejection", (reason) => {
 });
 
 io.on("connection", (socket) => {
+  // --- Per-IP connection cap (abuse / DoS guard) ---
+  const ip = ipOf(socket);
+  socket.data.ip = ip;
+  connectionsByIp.set(ip, (connectionsByIp.get(ip) || 0) + 1);
+  // Registered first so the count is released even if we reject below.
+  socket.on("disconnect", () => {
+    const c = (connectionsByIp.get(ip) || 1) - 1;
+    if (c <= 0) connectionsByIp.delete(ip);
+    else connectionsByIp.set(ip, c);
+  });
+  if (connectionsByIp.get(ip) > MAX_CONN_PER_IP) {
+    socket.emit("errorMsg", { message: "Too many connections from your network." });
+    socket.disconnect(true);
+    return;
+  }
+
   // --- createRoom: open a new room and become host ---
   socket.on("createRoom", async (payload) => {
     if (socket.data.busy || roomOf(socket)) return;
+    if (rateLimited(socket, "create", 5, 10000)) {
+      socket.emit("errorMsg", { message: "Slow down." });
+      return;
+    }
+    if (rooms.size >= MAX_ROOMS) {
+      socket.emit("errorMsg", { message: "Server is at capacity. Try again soon." });
+      return;
+    }
     socket.data.busy = true;
     try {
       const id = await resolveIdentity(payload);
@@ -626,6 +684,10 @@ io.on("connection", (socket) => {
   // progress you join as a spectator (watch only). ---
   socket.on("joinRoom", async (payload) => {
     if (socket.data.busy || roomOf(socket)) return;
+    if (rateLimited(socket, "join", 10, 10000)) {
+      socket.emit("errorMsg", { message: "Slow down." });
+      return;
+    }
     socket.data.busy = true;
     try {
       const code = String((payload && payload.code) ?? "").toUpperCase().trim();
@@ -659,6 +721,10 @@ io.on("connection", (socket) => {
   // --- quickPlay: matchmaking. Join an open public lobby, or open a new one. ---
   socket.on("quickPlay", async (payload) => {
     if (socket.data.busy || roomOf(socket)) return;
+    if (rateLimited(socket, "quick", 5, 10000)) {
+      socket.emit("errorMsg", { message: "Slow down." });
+      return;
+    }
     socket.data.busy = true;
     try {
       const id = await resolveIdentity(payload);
@@ -675,6 +741,10 @@ io.on("connection", (socket) => {
         }
       }
       if (!room) {
+        if (rooms.size >= MAX_ROOMS) {
+          socket.emit("errorMsg", { message: "Server is at capacity. Try again soon." });
+          return;
+        }
         const code = makeCode();
         room = makeRoom(code);
         room.isPublic = true;
@@ -753,6 +823,10 @@ io.on("connection", (socket) => {
       socket.emit("errorMsg", { message: "Game is already starting." });
       return;
     }
+    if (rateLimited(socket, "start", 10, 10000)) {
+      socket.emit("errorMsg", { message: "Slow down." });
+      return;
+    }
 
     room.loading = true;
     io.to(room.code).emit("loading", { message: "Loading songs..." }); // SAFE
@@ -808,8 +882,14 @@ io.on("connection", (socket) => {
       socket.emit("errorMsg", { message: "Already guessed this round." });
       return;
     }
-    const elapsedMs = Date.now() - room.roundStartedAt;
     const choice = payload && payload.option;
+    // Validate against the round's actual options (type + membership). Prevents
+    // garbage/oversized payloads entering room state.
+    if (typeof choice !== "string" || !room.options.includes(choice)) {
+      socket.emit("errorMsg", { message: "Invalid option." });
+      return;
+    }
+    const elapsedMs = Date.now() - room.roundStartedAt;
     player.hasGuessed = true;
     room.guesses.set(socket.id, { option: choice, elapsedMs });
 

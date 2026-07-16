@@ -486,7 +486,7 @@ function GameCard({ game, onOpen }) {
         <span className="flex items-center gap-2">
           <span className="font-console text-sm uppercase tracking-wide text-bone">{game.title}</span>
           {!playable && (
-            <span className="font-console text-[10px] uppercase tracking-[0.2em] text-amber">Soon</span>
+            <span className="font-console text-[11px] uppercase tracking-[0.2em] text-amber">Soon</span>
           )}
         </span>
         <span className="mt-1 block font-console text-xs text-dim">{game.sub}</span>
@@ -635,9 +635,57 @@ function LanguageSelect() {
 
 function SideMenu({ games, onClose, onHome, onOpen, onProfile }) {
   const playable = games.filter((g) => g.status === "play");
+  const panelRef = useRef(null);
+
+  // Modal a11y: focus into the panel on open, trap Tab, close on Escape, and
+  // restore focus to the trigger on close (WCAG 2.4.3 / 2.1.2 / 4.1.2).
+  useEffect(() => {
+    const prevFocused = document.activeElement;
+    const panel = panelRef.current;
+    const focusables = () =>
+      panel
+        ? Array.from(
+            panel.querySelectorAll(
+              'button, [href], select, input, [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((el) => !el.disabled)
+        : [];
+    const first = focusables()[0];
+    if (first) first.focus();
+
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key === "Tab") {
+        const items = focusables();
+        if (items.length === 0) return;
+        const a = items[0];
+        const b = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === a) {
+          e.preventDefault();
+          b.focus();
+        } else if (!e.shiftKey && document.activeElement === b) {
+          e.preventDefault();
+          a.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (prevFocused && typeof prevFocused.focus === "function") prevFocused.focus();
+    };
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-[70] flex">
-      <nav className="animate-rise w-72 max-w-[80vw] overflow-y-auto border-r border-rule bg-cabinet px-5 py-6">
+    <div className="fixed inset-0 z-[70] flex" role="dialog" aria-modal="true" aria-label="Menu">
+      <nav
+        ref={panelRef}
+        className="animate-rise w-72 max-w-[80vw] overflow-y-auto border-r border-rule bg-cabinet px-5 py-6"
+      >
         <div className="flex items-center justify-between">
           <span className="font-marquee text-xl font-black uppercase tracking-tight text-bone">Snippet</span>
           <button onClick={onClose} aria-label="Close menu" className="font-console text-xl text-dim hover:text-pink">
@@ -878,7 +926,7 @@ function Lobby({ players, myId, isHost, onStart, code, messages, onChat, clipPre
                   </span>
                 )}
               </span>
-              <span className="flex items-center gap-3 font-console text-[10px] uppercase tracking-[0.2em]">
+              <span className="flex items-center gap-3 font-console text-[11px] uppercase tracking-[0.2em]">
                 {p.id === myId && <span className="text-dim">· You</span>}
                 {i === 0 && <span className="text-amber">[Host]</span>}
               </span>
@@ -1217,7 +1265,7 @@ function Reveal({ reveal, myId, onReact, players }) {
                   <Avatar name={r.name} src={avatarOf[r.id]} size={22} />
                   <span className="truncate font-console uppercase tracking-wide text-bone">{r.name}</span>
                   {r.streakBonus > 0 && (
-                    <span className="shrink-0 font-console text-[10px] uppercase tracking-wide text-amber">
+                    <span className="shrink-0 font-console text-[11px] uppercase tracking-wide text-amber">
                       +{r.currentStreak} st
                     </span>
                   )}
@@ -1243,9 +1291,11 @@ function Reveal({ reveal, myId, onReact, players }) {
 function StatusDot({ correct, answered }) {
   const cls = !answered ? "text-dim" : correct ? "text-good" : "text-bad";
   const mark = !answered ? "○" : correct ? "✓" : "✗";
+  const label = !answered ? "No answer" : correct ? "Correct" : "Incorrect";
   return (
-    <span className={`w-4 text-center font-console text-sm ${cls}`} aria-hidden="true">
-      {mark}
+    <span className={`w-4 text-center font-console text-sm ${cls}`}>
+      <span className="sr-only">{label}</span>
+      <span aria-hidden="true">{mark}</span>
     </span>
   );
 }
@@ -1390,7 +1440,7 @@ function Avatar({ name, src, size = 26 }) {
     <span
       aria-hidden="true"
       style={{ width: px, height: px }}
-      className="grid shrink-0 place-items-center border border-rule bg-void font-console text-[10px] text-dim"
+      className="grid shrink-0 place-items-center border border-rule bg-void font-console text-[11px] text-dim"
     >
       {initial}
     </span>
@@ -1481,7 +1531,7 @@ function ReactionOverlay({ reactions }) {
           style={{ left: `${12 + (r.lane ?? 0) * 18}%` }}
         >
           {r.token}
-          <span className="ml-1 align-middle font-console text-[10px] uppercase tracking-wide text-dim">
+          <span className="ml-1 align-middle font-console text-[11px] uppercase tracking-wide text-dim">
             {r.name}
           </span>
         </div>
@@ -1555,7 +1605,12 @@ function Toast({ message }) {
 
 function LoadingOverlay({ message }) {
   return (
-    <div className="crt-scan fixed inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-void/95">
+    <div
+      role="status"
+      aria-live="assertive"
+      aria-label={message ? `Loading: ${message}` : "Loading"}
+      className="crt-scan fixed inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-void/95"
+    >
       <p className="font-coin text-xs text-pink">LOADING</p>
       <p className="font-console text-sm uppercase tracking-[0.2em] text-dim">
         {message} <span className="animate-blink text-pink">▍</span>
@@ -1582,7 +1637,12 @@ function CountdownOverlay({ seconds, round, worth, maxPoints }) {
     return () => clearInterval(id);
   }, [seconds]);
   return (
-    <div className="crt-scan fixed inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-void/95 px-6 text-center">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label={`Round ${round ?? 0} starting${n > 0 ? ` in ${n}` : ""}`}
+      className="crt-scan fixed inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-void/95 px-6 text-center"
+    >
       <p className={EYEBROW}>Round {String(round ?? 0).padStart(2, "0")}</p>
       {n > 0 ? (
         <span className="animate-flicker font-marquee text-8xl font-black tabular-nums leading-none phosphor">

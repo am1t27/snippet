@@ -1163,14 +1163,15 @@ function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGuess, on
           const dimmed = locked && !selected; // lock animation
           const c = OPT_COLORS[i % OPT_COLORS.length];
           return (
-            <div key={opt}>
+            <div key={opt} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
               <button
                 onClick={() => onGuess(opt)}
                 disabled={locked}
                 aria-label={`Option ${i + 1}: ${opt}`}
                 className={[
-                  "flex w-full items-center gap-4 border px-4 py-4 text-left font-console text-sm uppercase tracking-wide text-bone transition-all",
-                  selected ? `ring-2 ${c.sel}` : `border-rule bg-cabinet ${c.hov}`,
+                  "flex w-full items-center gap-4 border px-4 py-4 text-left font-console text-sm uppercase tracking-wide text-bone",
+                  "transition-[border-color,background-color,opacity,transform] enabled:active:scale-[.96]",
+                  selected ? `ring-2 ${c.sel} animate-lockin` : `border-rule bg-cabinet ${c.hov}`,
                   dimmed ? "pointer-events-none opacity-30" : "",
                   "disabled:cursor-not-allowed",
                 ].join(" ")}
@@ -1179,7 +1180,7 @@ function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGuess, on
                 <span className="min-w-0 truncate">{opt}</span>
               </button>
               {hasGuessed && selected && (
-                <p className={`mt-1 font-console text-xs uppercase tracking-[0.2em] ${c.num}`}>Locked</p>
+                <p className={`mt-1 animate-rise font-console text-xs uppercase tracking-[0.2em] ${c.num}`}>Locked</p>
               )}
             </div>
           );
@@ -1202,6 +1203,29 @@ function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGuess, on
   );
 }
 
+// Animated count-up for score reveals. Eases out over ~600ms; snaps instantly
+// under prefers-reduced-motion. Display-only — never affects real scores.
+function useCountUp(target, duration = 600) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    const n = Number(target) || 0;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setVal(n);
+      return;
+    }
+    let raf;
+    const t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / duration);
+      setVal(Math.round(n * (1 - Math.pow(1 - k, 3)))); // ease-out cubic
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return val;
+}
+
 // ---------- Reveal ----------
 function Reveal({ reveal, myId, onReact, players }) {
   const results = reveal?.results ?? [];
@@ -1218,15 +1242,16 @@ function Reveal({ reveal, myId, onReact, players }) {
   const winnerResult = winner ? results.find((r) => r.name === winner.name) : null;
   const winnerPoints = winnerResult?.pointsEarned ?? 0;
   const winnerStreak = winnerResult?.streakBonus ?? 0;
+  const shownPoints = useCountUp(winnerPoints);
 
   return (
     <div className="space-y-6">
-      <p className={EYEBROW}>
+      <p className={`${EYEBROW} animate-rise`}>
         Round {String(round).padStart(2, "0")} / {String(total).padStart(2, "0")}
       </p>
 
       {track && (
-        <div className={`${PANEL} px-5 py-4`}>
+        <div className={`${PANEL} animate-rise px-5 py-4`} style={{ animationDelay: "80ms" }}>
           <p className={EYEBROW}>The answer</p>
           <p className="mt-2 font-marquee text-lg font-black uppercase tracking-tight text-bone">
             <span className={isArtist ? "text-amber" : ""}>{track.artistName}</span>
@@ -1238,7 +1263,10 @@ function Reveal({ reveal, myId, onReact, players }) {
 
       {/* Winner card: HIGH SCORE, amber left accent, big points */}
       {winner ? (
-        <div className="border border-amber/40 border-l-4 border-l-amber bg-amber/5 px-5 py-5 shadow-[0_0_30px_-10px_#FFC93C]">
+        <div
+          className="animate-rise border border-amber/40 border-l-4 border-l-amber bg-amber/5 px-5 py-5 shadow-[0_0_30px_-10px_#FFC93C]"
+          style={{ animationDelay: "160ms" }}
+        >
           <p className="font-coin text-xs text-amber">HIGH SCORE</p>
           <div className="mt-3 flex items-end justify-between gap-4">
             <div className="min-w-0">
@@ -1248,7 +1276,7 @@ function Reveal({ reveal, myId, onReact, players }) {
               <p className="mt-1 font-console text-xs tabular-nums text-dim">{winner.answerTimeSeconds}s</p>
             </div>
             <p className="shrink-0 animate-scoreroll font-marquee text-3xl font-black tabular-nums text-amber">
-              +{winnerPoints}
+              +{shownPoints}
             </p>
           </div>
           {winnerStreak > 0 && (
@@ -1258,27 +1286,31 @@ function Reveal({ reveal, myId, onReact, players }) {
           )}
         </div>
       ) : (
-        <div className="border border-bad/50 bg-bad/5 px-5 py-6 text-center shadow-[0_0_30px_-10px_#FF4D6D]">
+        <div
+          className="animate-rise border border-bad/50 bg-bad/5 px-5 py-6 text-center shadow-[0_0_30px_-10px_#FF4D6D]"
+          style={{ animationDelay: "160ms" }}
+        >
           <p className="font-marquee text-2xl font-black uppercase tracking-tight text-bad">No one got it</p>
         </div>
       )}
 
       {/* Per-player results: name | answer time | correct/wrong | points */}
-      <div>
+      <div className="animate-rise" style={{ animationDelay: "260ms" }}>
         <p className={EYEBROW}>This round</p>
         <ul className={`mt-3 ${PANEL} divide-y divide-rule`}>
-          {results.map((r) => {
+          {results.map((r, ri) => {
             const answered = r.answerTimeSeconds != null;
             const isMe = myId && r.id === myId;
             return (
               <li
                 key={r.id ?? r.name}
-                className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                className={`flex animate-rise items-center justify-between gap-3 px-4 py-3 ${
                   r.correct ? "bg-good/5" : isMe ? "bg-pink/5" : ""
                 }`}
+                style={{ animationDelay: `${300 + ri * 50}ms` }}
               >
                 <span className="flex min-w-0 items-center gap-3">
-                  <StatusDot correct={r.correct} answered={answered} />
+                  <StatusDot correct={r.correct} answered={answered} delay={300 + ri * 50 + 140} />
                   <Avatar name={r.name} src={avatarOf[r.id]} size={22} />
                   <span className="truncate font-console uppercase tracking-wide text-bone">{r.name}</span>
                   {r.streakBonus > 0 && (
@@ -1297,22 +1329,27 @@ function Reveal({ reveal, myId, onReact, players }) {
         </ul>
       </div>
 
-      <Leaderboard rows={leaderboard} myId={myId} title="Leaderboard" />
+      <div className="animate-rise" style={{ animationDelay: "380ms" }}>
+        <Leaderboard rows={leaderboard} myId={myId} title="Leaderboard" />
+      </div>
 
       <ReactionBar onReact={onReact} />
     </div>
   );
 }
 
-// Correct / wrong / no-answer marker for the reveal list.
-function StatusDot({ correct, answered }) {
+// Correct / wrong / no-answer marker for the reveal list. `delay` syncs the
+// pop with the row's own stagger so the mark lands just after the row shows.
+function StatusDot({ correct, answered, delay = 0 }) {
   const cls = !answered ? "text-dim" : correct ? "text-good" : "text-bad";
   const mark = !answered ? "○" : correct ? "✓" : "✗";
   const label = !answered ? "No answer" : correct ? "Correct" : "Incorrect";
   return (
     <span className={`w-4 text-center font-console text-sm ${cls}`}>
       <span className="sr-only">{label}</span>
-      <span aria-hidden="true">{mark}</span>
+      <span aria-hidden="true" className="inline-block animate-popin" style={{ animationDelay: `${delay}ms` }}>
+        {mark}
+      </span>
     </span>
   );
 }
@@ -1327,28 +1364,32 @@ function GameOver({ gameOver, players, myId, onRestart, messages, onChat }) {
   const history = gameOver?.roundHistory ?? null;
   const avatarOf = {};
   for (const p of players ?? []) avatarOf[p.id] = p.avatar;
+  const shownScore = useCountUp(champ?.score ?? 0, 900);
 
   return (
     <div className="space-y-8">
-      <p className="text-center font-marquee text-4xl font-black uppercase tracking-tight text-bone">
+      <p className="animate-rise text-center font-marquee text-4xl font-black uppercase tracking-tight text-bone [text-wrap:balance]">
         Game Over
       </p>
 
       {champ && (
-        <div className="border border-amber/50 bg-amber/5 px-6 py-6 text-center shadow-[0_0_36px_-12px_#FFC93C]">
+        <div
+          className="animate-rise border border-amber/50 bg-amber/5 px-6 py-6 text-center shadow-[0_0_36px_-12px_#FFC93C]"
+          style={{ animationDelay: "120ms" }}
+        >
           <p className="font-coin text-xs text-amber">1UP · Champion</p>
           <div className="mt-3 flex items-center justify-center gap-3">
             <Avatar name={champ.name} src={avatarOf[champ.id]} size={32} />
             <p className="font-console uppercase tracking-wide text-bone">{champ.name}</p>
           </div>
           <p className="mt-1 animate-scoreroll font-marquee text-4xl font-black tabular-nums text-amber">
-            {champ.score}
+            {shownScore}
           </p>
         </div>
       )}
 
       {rest.length > 0 && (
-        <div>
+        <div className="animate-rise" style={{ animationDelay: "220ms" }}>
           <p className={EYEBROW}>High scores</p>
           <ol className={`mt-3 ${PANEL} divide-y divide-rule`}>
             {rest.map((r, i) => (
@@ -1580,7 +1621,7 @@ function TimeCounter({ seconds, total = 10 }) {
       </div>
       <div className="mt-4 h-1.5 w-full bg-rule">
         <div
-          className={`h-full transition-all duration-1000 ease-linear ${low ? "bg-bad" : "bg-amber"}`}
+          className={`h-full transition-[width,background-color] duration-1000 ease-linear ${low ? "bg-bad" : "bg-amber"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -1662,11 +1703,11 @@ function CountdownOverlay({ seconds, round, worth, maxPoints }) {
     >
       <p className={EYEBROW}>Round {String(round ?? 0).padStart(2, "0")}</p>
       {n > 0 ? (
-        <span className="animate-flicker font-marquee text-8xl font-black tabular-nums leading-none phosphor">
+        <span key={n} className="animate-digitpop font-marquee text-8xl font-black tabular-nums leading-none phosphor">
           {n}
         </span>
       ) : (
-        <span className="font-coin text-5xl leading-none phosphor-pink">GO</span>
+        <span className="animate-digitpop font-coin text-5xl leading-none phosphor-pink">GO</span>
       )}
       {worth != null && (
         <div className="space-y-1">

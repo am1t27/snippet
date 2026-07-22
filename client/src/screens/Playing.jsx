@@ -191,7 +191,9 @@ export function TimeCounter({ seconds, total = 10 }) {
         <span className={EYEBROW}>Time</span>
         <span className={EYEBROW}>{Math.round(pct)}%</span>
       </div>
-      <div className="mt-1 text-center">
+      {/* Heartbeat wrapper: scale pulse lives on the parent so it can compose
+          with the flicker (opacity) animation on the digits themselves. */}
+      <div className={`mt-1 text-center ${low ? "animate-beat" : ""}`}>
         <span
           className={`font-console text-7xl font-bold tabular-nums leading-none ${
             low ? "phosphor-bad animate-flicker" : "phosphor"

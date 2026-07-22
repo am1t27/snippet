@@ -685,7 +685,7 @@ io.on("connection", (socket) => {
     else connectionsByIp.set(ip, c);
   });
   if (connectionsByIp.get(ip) > MAX_CONN_PER_IP) {
-    socket.emit("errorMsg", { message: "Too many connections from your network." });
+    socket.emit("errorMsg", { message: "Too many connections from your network. Try again in a minute." });
     socket.disconnect(true);
     return;
   }
@@ -694,7 +694,7 @@ io.on("connection", (socket) => {
   socket.on("createRoom", async (payload) => {
     if (socket.data.busy || roomOf(socket)) return;
     if (rateLimited(socket, "create", 5, 10000)) {
-      socket.emit("errorMsg", { message: "Slow down." });
+      socket.emit("errorMsg", { message: "Too fast. Wait a moment and try again." });
       return;
     }
     if (rooms.size >= MAX_ROOMS) {
@@ -725,7 +725,7 @@ io.on("connection", (socket) => {
   socket.on("joinRoom", async (payload) => {
     if (socket.data.busy || roomOf(socket)) return;
     if (rateLimited(socket, "join", 10, 10000)) {
-      socket.emit("errorMsg", { message: "Slow down." });
+      socket.emit("errorMsg", { message: "Too fast. Wait a moment and try again." });
       return;
     }
     socket.data.busy = true;
@@ -733,16 +733,16 @@ io.on("connection", (socket) => {
       const code = String((payload && payload.code) ?? "").toUpperCase().trim();
       const room = rooms.get(code);
       if (!room) {
-        socket.emit("errorMsg", { message: "Room not found." });
+        socket.emit("errorMsg", { message: "No room with that code. Check the code and try again." });
         return;
       }
       const asSpectator = room.phase !== PHASE.LOBBY;
       if (!asSpectator && playerCount(room) >= MAX_PLAYERS) {
-        socket.emit("errorMsg", { message: "Room is full." });
+        socket.emit("errorMsg", { message: "This room is full. Ask for another code, or create your own room." });
         return;
       }
       if (asSpectator && spectatorCount(room) >= MAX_SPECTATORS) {
-        socket.emit("errorMsg", { message: "Too many spectators." });
+        socket.emit("errorMsg", { message: "This room has too many spectators. Try again in a moment." });
         return;
       }
       const id = await resolveIdentity(payload);
@@ -762,7 +762,7 @@ io.on("connection", (socket) => {
   socket.on("quickPlay", async (payload) => {
     if (socket.data.busy || roomOf(socket)) return;
     if (rateLimited(socket, "quick", 5, 10000)) {
-      socket.emit("errorMsg", { message: "Slow down." });
+      socket.emit("errorMsg", { message: "Too fast. Wait a moment and try again." });
       return;
     }
     socket.data.busy = true;
@@ -867,12 +867,12 @@ io.on("connection", (socket) => {
       return;
     }
     if (rateLimited(socket, "start", 10, 10000)) {
-      socket.emit("errorMsg", { message: "Slow down." });
+      socket.emit("errorMsg", { message: "Too fast. Wait a moment and try again." });
       return;
     }
 
     room.loading = true;
-    io.to(room.code).emit("loading", { message: "Loading songs..." }); // SAFE
+    io.to(room.code).emit("loading", { message: "Loading songs…" }); // SAFE
 
     // The host's requested settings are validated/clamped here — never trusted.
     room.settings = sanitizeSettings(payload);
@@ -889,7 +889,7 @@ io.on("connection", (socket) => {
     room.loading = false;
 
     if (!pool || pool.length < room.settings.optionsCount) {
-      io.to(room.code).emit("errorMsg", { message: "Not enough songs to start." });
+      io.to(room.code).emit("errorMsg", { message: "Not enough songs for these settings. Try another genre or era." });
       return;
     }
     if (room.phase !== PHASE.LOBBY || room.players.size < 1) return;

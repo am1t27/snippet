@@ -130,13 +130,13 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
           onClick={retryAudio}
           className="w-full border border-amber px-5 py-3 font-console text-sm uppercase tracking-[0.2em] text-amber transition-colors hover:bg-amber hover:text-black"
         >
-          Audio failed — tap to retry
+          Audio didn't load — retry
         </button>
       )}
 
       {needsTap && (
         <button type="button" onClick={() => startRef.current()} className={`${BTN_GHOST} w-full`}>
-          ▶ Tap to play clip
+          ▶ Play clip
         </button>
       )}
 
@@ -171,7 +171,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
       </div>
 
       {spectator ? (
-        <p className={`${EYEBROW} text-center text-cyan`}>Spectating — you can watch and react, but not guess</p>
+        <p className={`${EYEBROW} text-center text-cyan`}>Spectating. You can react, but not guess.</p>
       ) : (
         !hasGuessed && (
           <p className={`${EYEBROW} text-center`}>

@@ -59,6 +59,11 @@ export default {
           from: { transform: "scale(1.25)", opacity: "0" },
           to: { transform: "scale(1)", opacity: "1" },
         },
+        // Low-time heartbeat: subtle scale pulse, once per second.
+        beat: {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.04)" },
+        },
       },
       animation: {
         blink: "blink 1s step-end infinite",
@@ -69,6 +74,7 @@ export default {
         popin: "popin 300ms cubic-bezier(0.2,0,0,1) both",
         lockin: "lockin 220ms cubic-bezier(.16,1,.3,1) both",
         digitpop: "digitpop 260ms cubic-bezier(0.2,0,0,1) both",
+        beat: "beat 1s ease-in-out infinite",
       },
     },
   },

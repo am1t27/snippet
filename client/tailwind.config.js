@@ -43,6 +43,22 @@ export default {
           "15%": { transform: "translateY(-10px) scale(1)", opacity: "1" },
           "100%": { transform: "translateY(-120px) scale(1)", opacity: "0" },
         },
+        // Icon/marker pop: scale .25→1, blur 4→0 (make-interfaces spec values).
+        popin: {
+          from: { transform: "scale(.25)", opacity: "0", filter: "blur(4px)" },
+          to: { transform: "scale(1)", opacity: "1", filter: "blur(0px)" },
+        },
+        // Quick press-and-settle punch when an answer locks in.
+        lockin: {
+          "0%": { transform: "scale(1)" },
+          "35%": { transform: "scale(.97)" },
+          "100%": { transform: "scale(1)" },
+        },
+        // Big countdown digit: lands from slightly oversized each tick.
+        digitpop: {
+          from: { transform: "scale(1.25)", opacity: "0" },
+          to: { transform: "scale(1)", opacity: "1" },
+        },
       },
       animation: {
         blink: "blink 1s step-end infinite",
@@ -50,6 +66,9 @@ export default {
         scoreroll: "scoreroll 240ms cubic-bezier(.16,1,.3,1) both",
         rise: "rise 240ms cubic-bezier(.16,1,.3,1) both",
         floatup: "floatup 1.6s ease-out forwards",
+        popin: "popin 300ms cubic-bezier(0.2,0,0,1) both",
+        lockin: "lockin 220ms cubic-bezier(.16,1,.3,1) both",
+        digitpop: "digitpop 260ms cubic-bezier(0.2,0,0,1) both",
       },
     },
   },

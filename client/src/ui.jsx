@@ -9,12 +9,12 @@ export const PANEL = "border border-rule bg-cabinet";
 // Primary CTA = pink with a soft neon glow.
 export const BTN_AMBER =
   "bg-pink px-5 py-4 font-console text-sm uppercase tracking-[0.2em] text-black " +
-  "shadow-[0_0_24px_-6px_#FF3D7F] transition-[transform,background-color] hover:bg-[#ff5e96] active:scale-[.98] " +
+  "shadow-[0_0_24px_-6px_#FF3D7F] transition-[transform,background-color] hover:bg-[#ff5e96] active:scale-[.96] " +
   "focus:outline-none focus:ring-2 focus:ring-pink focus:ring-offset-2 focus:ring-offset-void " +
   "disabled:cursor-not-allowed disabled:bg-rule disabled:text-dim disabled:shadow-none";
 export const BTN_GHOST =
   "border border-rule bg-cabinet px-5 py-3 font-console text-sm uppercase tracking-[0.2em] text-bone " +
-  "transition-colors hover:border-amber hover:text-amber active:scale-[.98] " +
+  "transition-colors hover:border-amber hover:text-amber active:scale-[.96] " +
   "focus:outline-none focus:ring-2 focus:ring-amber disabled:cursor-not-allowed disabled:opacity-50";
 
 // Reaction call-outs (must match the server's REACTIONS whitelist). Typographic,
@@ -167,7 +167,7 @@ export function ReactionBar({ onReact }) {
           key={t}
           onClick={() => onReact(t)}
           aria-label={`React ${t}`}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center border border-rule bg-cabinet px-2 py-1.5 font-console text-xs text-dim transition-[transform,color,border-color] hover:border-amber hover:text-amber active:scale-95"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center border border-rule bg-cabinet px-2 py-1.5 font-console text-xs text-dim transition-[transform,color,border-color] hover:border-amber hover:text-amber active:scale-[.96]"
         >
           {t}
         </button>

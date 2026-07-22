@@ -320,7 +320,7 @@ export default function App() {
             onClick={toggleMute}
             aria-pressed={!muted}
             aria-label={muted ? "Unmute sound effects" : "Mute sound effects"}
-            className="inline-flex min-h-11 items-center font-console text-[11px] uppercase tracking-[0.2em] text-dim transition-colors hover:text-amber"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center font-console text-[11px] uppercase tracking-[0.2em] text-dim transition-colors hover:text-amber"
           >
             {muted ? "♪ Off" : "♪ On"}
           </button>
@@ -358,7 +358,7 @@ function Masthead({ phase, round, total, onMenu, onBrand }) {
           <button type="button"
             onClick={onBrand || undefined}
             disabled={!onBrand}
-            className="flex items-center disabled:cursor-default"
+            className="flex min-h-11 items-center disabled:cursor-default"
           >
             Snippet
             <span className="ml-1.5 inline-block h-[0.7em] w-[0.32em] animate-blink bg-pink" aria-hidden="true" />

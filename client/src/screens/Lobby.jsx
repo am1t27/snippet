@@ -124,7 +124,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
                     key={g}
                     onClick={() => setGenre(g)}
                     aria-pressed={active}
-                    className={`min-h-11 px-3 py-2 font-console text-xs uppercase tracking-[0.2em] transition-colors ${
+                    className={`min-h-11 px-3 py-2 font-console text-xs uppercase tracking-[0.2em] transition-[color,border-color,background-color,transform] active:scale-[.96] ${
                       active
                         ? "bg-pink text-black"
                         : "border border-rule text-dim hover:border-pink hover:text-pink"
@@ -176,7 +176,7 @@ function SettingRow({ label, options, value, onChange }) {
               key={String(o.value)}
               onClick={() => onChange(o.value)}
               aria-pressed={active}
-              className={`min-h-11 min-w-[2.75rem] px-2.5 py-1.5 font-console text-xs uppercase tracking-[0.12em] transition-colors ${
+              className={`min-h-11 min-w-[2.75rem] px-2.5 py-1.5 font-console text-xs uppercase tracking-[0.12em] transition-[color,border-color,background-color,transform] active:scale-[.96] ${
                 active
                   ? "bg-pink text-black"
                   : "border border-rule text-dim hover:border-pink hover:text-pink"

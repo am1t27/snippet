@@ -146,7 +146,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
           const dimmed = locked && !selected; // lock animation
           const c = OPT_COLORS[i % OPT_COLORS.length];
           return (
-            <div key={opt} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
+            <div key={opt} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
               <button type="button"
                 onClick={() => onGuess(opt)}
                 disabled={locked}

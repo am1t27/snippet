@@ -33,7 +33,7 @@ export function Home({ games, stats, onOpen, onProfile }) {
 
       <button type="button"
         onClick={onProfile}
-        className={`${PANEL} flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:border-amber/60`}
+        className={`${PANEL} flex w-full items-center justify-between px-4 py-3 text-left transition-[border-color,transform] hover:border-amber/60 active:scale-[.96]`}
       >
         <span className={EYEBROW}>Your profile</span>
         <span className="font-console text-xs tabular-nums text-dim">
@@ -63,8 +63,8 @@ function GameCard({ game, onOpen }) {
     <button type="button"
       onClick={() => playable && onOpen(game)}
       disabled={!playable}
-      className={`${PANEL} flex items-start gap-3 px-4 py-4 text-left transition-colors ${
-        playable ? "hover:border-pink" : "opacity-60"
+      className={`${PANEL} flex items-start gap-3 px-4 py-4 text-left transition-[border-color,transform] ${
+        playable ? "hover:border-pink enabled:active:scale-[.96]" : "opacity-60"
       }`}
     >
       <span className="grid h-9 w-9 shrink-0 place-items-center border border-rule bg-void font-marquee text-lg text-pink">
@@ -144,7 +144,7 @@ function Faq() {
                 onClick={() => setOpen(isOpen ? -1 : i)}
                 aria-expanded={isOpen}
                 aria-controls={`faq-answer-${i}`}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-transform active:scale-[.96]"
               >
                 <span className="font-console text-xs uppercase tracking-wide text-bone">{f.q}</span>
                 <span className="shrink-0 font-console text-amber" aria-hidden="true">{isOpen ? "−" : "+"}</span>

@@ -19,7 +19,7 @@ export const BTN_GHOST =
 
 // Reaction call-outs (must match the server's REACTIONS whitelist). Typographic,
 // not emoji — keeps the §12 design rule while still being expressive.
-export const REACTION_TOKENS = ["GG", "WOW", "!!", "??", "★", "♥"];
+const REACTION_TOKENS = ["GG", "WOW", "!!", "??", "★", "♥"];
 
 
 // Animated count-up for score reveals. Eases out over ~600ms; snaps instantly
@@ -163,7 +163,7 @@ export function ReactionBar({ onReact }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
       {REACTION_TOKENS.map((t) => (
-        <button
+        <button type="button"
           key={t}
           onClick={() => onReact(t)}
           aria-label={`React ${t}`}
@@ -233,7 +233,7 @@ export function LoadingOverlay({ message }) {
   return (
     <div
       role="status"
-      aria-live="assertive"
+      aria-live="polite"
       aria-label={message ? `Loading: ${message}` : "Loading"}
       className="crt-scan fixed inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-void/95"
     >

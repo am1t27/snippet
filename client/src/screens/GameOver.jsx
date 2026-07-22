@@ -6,7 +6,7 @@ import { EYEBROW, PANEL, BTN_AMBER, Avatar, Chat, Leaderboard, useCountUp } from
 export function GameOver({ gameOver, players, myId, onRestart, messages, onChat }) {
   const rows =
     gameOver?.leaderboard ??
-    [...players].sort((a, b) => b.score - a.score).map((p, i) => ({ rank: i + 1, ...p }));
+    players.toSorted((a, b) => b.score - a.score).map((p, i) => ({ rank: i + 1, ...p }));
   const champ = rows[0];
   const rest = rows.slice(1);
   const history = gameOver?.roundHistory ?? null;
@@ -57,7 +57,7 @@ export function GameOver({ gameOver, players, myId, onRestart, messages, onChat 
 
       <Chat messages={messages} onChat={onChat} myId={myId} title="Chat" />
 
-      <button onClick={onRestart} className={`${BTN_AMBER} w-full`}>
+      <button type="button" onClick={onRestart} className={`${BTN_AMBER} w-full`}>
         <span aria-hidden="true">↻ </span>Play again
       </button>
     </div>
@@ -65,11 +65,11 @@ export function GameOver({ gameOver, players, myId, onRestart, messages, onChat 
 }
 
 // Collapsible per-round recap shown on game over (Feature 6).
-export function RoundHistory({ history }) {
+function RoundHistory({ history }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
-      <button
+      <button type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls="round-history"

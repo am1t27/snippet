@@ -58,6 +58,8 @@ export function useGameSocket() {
   const seqRef = useRef(0); // monotonic id for stable React keys
 
   useEffect(() => {
+    // Pending reaction-expiry timers, cancelled together on unmount.
+    const expiryTimers = new Set();
     // In dev, Vite proxies /socket.io to the server on :3000 (same origin). In
     // prod, the deployed client connects to the backend URL from VITE_SOCKET_URL
     // (e.g. your Railway URL).
@@ -125,7 +127,12 @@ export function useGameSocket() {
       const key = ++seqRef.current;
       const lane = key % 5; // spread horizontally so simultaneous reacts don't stack
       setReactions((prev) => [...prev, { ...r, key, lane }]);
-      setTimeout(() => setReactions((prev) => prev.filter((x) => x.key !== key)), 1600);
+      // Track the expiry timer so unmount can cancel any still in flight.
+      const t = setTimeout(() => {
+        expiryTimers.delete(t);
+        setReactions((prev) => prev.filter((x) => x.key !== key));
+      }, 1600);
+      expiryTimers.add(t);
     });
 
     // Room membership notices (Feature 5) -> bottom toast.
@@ -148,6 +155,8 @@ export function useGameSocket() {
     });
 
     return () => {
+      for (const t of expiryTimers) clearTimeout(t);
+      expiryTimers.clear();
       socket.close(); // cleanup: tear down the connection on unmount
     };
   }, []);

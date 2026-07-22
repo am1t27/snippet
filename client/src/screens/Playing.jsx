@@ -146,7 +146,10 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
           const dimmed = locked && !selected; // lock animation
           const c = OPT_COLORS[i % OPT_COLORS.length];
           return (
-            <div key={opt} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
+            // min-w-0: grid items default to min-width:auto, so without this a
+            // long track name sets the track's floor and scrolls the page
+            // sideways on narrow screens instead of letting the label truncate.
+            <div key={opt} className="min-w-0 animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
               <button type="button"
                 onClick={() => onGuess(opt)}
                 disabled={locked}

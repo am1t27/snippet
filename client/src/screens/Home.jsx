@@ -122,7 +122,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Can I focus on a genre or era?",
-    a: "The host picks a genre (hip-hop, R&B, rap, drill, trap) and a decade filter — all the way back to the 90s — before starting.",
+    a: "The host picks a genre (hip-hop, R&B, rap, drill, trap) and an era filter — all the way back to the 90s — before starting.",
   },
   {
     q: "Do I need to download anything?",

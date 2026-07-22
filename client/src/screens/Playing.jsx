@@ -3,12 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { EYEBROW, BTN_GHOST, ReactionBar } from "../ui";
 
 // Fallback scoring constants, mirroring server.js (banner uses roundMeta first).
-export const QUESTION_BASE = 300;
-export const QUESTION_STEP = 250;
-export const MAX_SPEED_BONUS = 350;
+const QUESTION_BASE = 300;
+const QUESTION_STEP = 250;
+const MAX_SPEED_BONUS = 350;
 
 // strings so Tailwind's JIT picks them up.
-export const OPT_COLORS = [
+const OPT_COLORS = [
   { num: "text-cyan", sel: "border-cyan bg-cyan/10 ring-cyan", hov: "enabled:hover:border-cyan enabled:hover:bg-cyan/10" },
   { num: "text-pink", sel: "border-pink bg-pink/10 ring-pink", hov: "enabled:hover:border-pink enabled:hover:bg-pink/10" },
   { num: "text-good", sel: "border-good bg-good/10 ring-good", hov: "enabled:hover:border-good enabled:hover:bg-good/10" },
@@ -73,6 +73,11 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
       el.removeEventListener("error", onError);
       el.pause();
     };
+    // Keyed on audioUrl only, by design: state.clip and state.roundMs are fixed
+    // for the match and every new round brings a new audioUrl, so they can never
+    // change without this effect re-running anyway. Adding them would restart
+    // playback mid-round on an unrelated state update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.audioUrl, audioRef]);
 
   // Manual recovery from an audio load/decode failure.
@@ -95,8 +100,6 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
     return () => window.removeEventListener("keydown", onKey);
   }, [locked, state.options, onGuess]);
 
-  const seconds = useCountdown(state.timeRemainingMs, state.round);
-
   // Round value chip. Prefer the server's roundStart values (roundMeta).
   const questionValue =
     roundMeta?.questionValue ?? QUESTION_BASE + (state.round - 1) * QUESTION_STEP;
@@ -116,10 +119,14 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
         </span>
       </div>
 
-      <TimeCounter seconds={seconds} total={roundSeconds} />
+      <TimeCounter
+        timeRemainingMs={state.timeRemainingMs}
+        round={state.round}
+        total={roundSeconds}
+      />
 
       {audioError && (
-        <button
+        <button type="button"
           onClick={retryAudio}
           className="w-full border border-amber px-5 py-3 font-console text-sm uppercase tracking-[0.2em] text-amber transition-colors hover:bg-amber hover:text-black"
         >
@@ -128,7 +135,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
       )}
 
       {needsTap && (
-        <button onClick={() => startRef.current()} className={`${BTN_GHOST} w-full`}>
+        <button type="button" onClick={() => startRef.current()} className={`${BTN_GHOST} w-full`}>
           ▶ Tap to play clip
         </button>
       )}
@@ -140,7 +147,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
           const c = OPT_COLORS[i % OPT_COLORS.length];
           return (
             <div key={opt} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
-              <button
+              <button type="button"
                 onClick={() => onGuess(opt)}
                 disabled={locked}
                 aria-label={`Option ${i + 1}: ${opt}`}
@@ -180,7 +187,12 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
 }
 
 // The CRT scoreboard — the design signature.
-export function TimeCounter({ seconds, total = 10 }) {
+//
+// Owns the countdown itself rather than taking `seconds` as a prop: the timer
+// ticks 4x/sec, and if Playing held that state every tick would re-render the
+// whole round (all option buttons) instead of just this panel.
+function TimeCounter({ timeRemainingMs, round, total = 10 }) {
+  const seconds = useCountdown(timeRemainingMs, round);
   const pct = Math.max(0, Math.min(100, (seconds / total) * 100));
   const low = seconds <= 3; // the only place red appears outside reveal
   const mm = Math.floor(seconds / 60);
@@ -216,7 +228,7 @@ export function TimeCounter({ seconds, total = 10 }) {
 // Seeds from the server's timeRemainingMs at the start of each round and ticks
 // down locally for smooth display. The server is still the only authority on
 // scoring — this number never leaves the client.
-export function useCountdown(timeRemainingMs, round) {
+function useCountdown(timeRemainingMs, round) {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
     const endAt = Date.now() + (timeRemainingMs ?? 0);

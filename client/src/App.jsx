@@ -101,7 +101,7 @@ export default function App() {
   }, [notice, clearNotice]);
 
   // Sound + mute toggle (persisted in localStorage by the sound module).
-  const [muted, setMutedState] = useState(sound.isMuted());
+  const [muted, setMutedState] = useState(() => sound.isMuted());
   const toggleMute = () => setMutedState(sound.toggleMuted());
 
   // Screen-reader announcements for phase outcomes (aria-live region below).
@@ -316,7 +316,7 @@ export default function App() {
 
         <footer className={`${EYEBROW} flex items-center justify-between border-t border-rule pt-4`}>
           <span>{connected ? "● Online" : "○ Offline"}</span>
-          <button
+          <button type="button"
             onClick={toggleMute}
             aria-pressed={!muted}
             aria-label={muted ? "Unmute sound effects" : "Mute sound effects"}
@@ -346,7 +346,7 @@ function Masthead({ phase, round, total, onMenu, onBrand }) {
     <header className="flex items-center justify-between gap-3 border-b border-rule pb-4">
       <div className="flex items-center gap-3">
         {onMenu && (
-          <button
+          <button type="button"
             onClick={onMenu}
             aria-label="Open menu"
             className="inline-flex min-h-11 min-w-11 items-center justify-center font-console text-2xl leading-none text-dim transition-colors hover:text-amber"
@@ -355,7 +355,7 @@ function Masthead({ phase, round, total, onMenu, onBrand }) {
           </button>
         )}
         <h1 className="flex items-center font-marquee text-2xl font-black uppercase leading-none tracking-tight text-bone sm:text-3xl">
-          <button
+          <button type="button"
             onClick={onBrand || undefined}
             disabled={!onBrand}
             className="flex items-center disabled:cursor-default"

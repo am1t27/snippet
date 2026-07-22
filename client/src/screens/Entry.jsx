@@ -20,7 +20,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
   return (
     <div className="mx-auto w-full max-w-sm animate-rise space-y-6">
       {onHome && (
-        <button onClick={onHome} className={`${EYEBROW} inline-flex min-h-11 items-center hover:text-amber`}>
+        <button type="button" onClick={onHome} className={`${EYEBROW} inline-flex min-h-11 items-center hover:text-amber`}>
           ‹ Home
         </button>
       )}
@@ -38,7 +38,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
             <span className="min-w-0 truncate font-console text-sm text-bone">
               Signed in · <span className="text-good">{googleCred.name}</span>
             </span>
-            <button
+            <button type="button"
               onClick={() => setGoogleCred(null)}
               className="inline-flex min-h-11 shrink-0 items-center font-console text-xs uppercase tracking-[0.2em] text-dim transition-colors hover:text-pink"
             >
@@ -72,7 +72,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
         </p>
       )}
 
-      <button
+      <button type="button"
         onClick={() => canPlay && onCreate(identityName, idToken)}
         disabled={!canPlay}
         aria-describedby={!canPlay ? "handle-hint" : undefined}
@@ -81,7 +81,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
         <span aria-hidden="true">▶ </span>Create Room
       </button>
 
-      <button
+      <button type="button"
         onClick={() => canPlay && onQuick(identityName, idToken)}
         disabled={!canPlay}
         aria-describedby={!canPlay ? "handle-hint" : undefined}
@@ -101,7 +101,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
             aria-label="Room code"
             className="w-28 border border-rule bg-cabinet px-3 py-3 text-center font-console text-lg uppercase tracking-[0.3em] text-bone placeholder:text-dim focus:border-pink focus:outline-none"
           />
-          <button
+          <button type="button"
             onClick={() => canPlay && code && onJoin(code, identityName, idToken)}
             disabled={!canPlay || !code}
             className={`${BTN_GHOST} flex-1`}
@@ -117,7 +117,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
 // Google Identity Services button. Renders nothing if no client ID is set (then
 // the app is guest-only). The credential is a Google ID token the server
 // re-verifies — the client never trusts it for identity.
-export function GoogleSignIn({ clientId, onSignIn }) {
+function GoogleSignIn({ clientId, onSignIn }) {
   const ref = useRef(null);
   const cbRef = useRef(onSignIn);
   cbRef.current = onSignIn;

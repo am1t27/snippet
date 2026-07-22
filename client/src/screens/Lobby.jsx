@@ -3,30 +3,30 @@ import { useState } from "react";
 import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST, Avatar, Chat } from "../ui";
 
 // Genre options the host can pick before starting (Feature 1).
-export const GENRES = ["HIP-HOP", "R&B", "RAP", "DRILL", "TRAP"];
+const GENRES = ["HIP-HOP", "R&B", "RAP", "DRILL", "TRAP"];
 
 // Host-configurable match settings. Each option is { label, value } and the
 // value is sent to the server, which re-validates against its own allowlist.
-export const ROUND_OPTS = [
+const ROUND_OPTS = [
   { label: "10", value: 10 },
   { label: "5", value: 5 },
   { label: "15", value: 15 },
 ];
-export const TIMER_OPTS = [
+const TIMER_OPTS = [
   { label: "10s", value: 10000 },
   { label: "7.5s", value: 7500 },
   { label: "15s", value: 15000 },
 ];
-export const OPTION_OPTS = [
+const OPTION_OPTS = [
   { label: "4", value: 4 },
   { label: "3", value: 3 },
   { label: "6", value: 6 },
 ];
-export const MODE_OPTS = [
+const MODE_OPTS = [
   { label: "Title", value: "TITLE" },
   { label: "Artist", value: "ARTIST" },
 ];
-export const DECADE_OPTS = [
+const DECADE_OPTS = [
   { label: "All", value: "all" },
   { label: "New", value: "new" },
   { label: "2020s", value: "2020s" },
@@ -34,7 +34,7 @@ export const DECADE_OPTS = [
   { label: "2000s", value: "2000s" },
   { label: "90s", value: "1990s" },
 ];
-export const CLIP_OPTS = [
+const CLIP_OPTS = [
   { label: "Random", value: "RANDOM" },
   { label: "Intro", value: "INTRO" },
 ];
@@ -102,7 +102,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
         <p className={EYEBROW}>Room code</p>
         <div className="mt-3 flex items-center justify-between gap-3">
           <span className="font-marquee text-4xl font-black tracking-[0.25em] text-amber">{code}</span>
-          <button onClick={copy} className={BTN_GHOST}>
+          <button type="button" onClick={copy} className={BTN_GHOST}>
             {copied ? "Link copied" : "Copy link"}
           </button>
           <span className="sr-only" role="status">
@@ -120,7 +120,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
               {GENRES.map((g) => {
                 const active = g === genre;
                 return (
-                  <button
+                  <button type="button"
                     key={g}
                     onClick={() => setGenre(g)}
                     aria-pressed={active}
@@ -144,7 +144,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
           <SettingRow label="Answers" options={OPTION_OPTS} value={settings.optionsCount} onChange={setField("optionsCount")} />
           <SettingRow label="Era" options={DECADE_OPTS} value={settings.decade} onChange={setField("decade")} />
 
-          <button onClick={handleStart} className={`${BTN_AMBER} w-full`}>
+          <button type="button" onClick={handleStart} className={`${BTN_AMBER} w-full`}>
             <span aria-hidden="true">▶ </span>Start Game
           </button>
         </div>
@@ -154,7 +154,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
         </p>
       )}
 
-      <button onClick={onLeave} className={`${BTN_GHOST} w-full`}>
+      <button type="button" onClick={onLeave} className={`${BTN_GHOST} w-full`}>
         <span aria-hidden="true">✕ </span>Leave Room
       </button>
 
@@ -164,7 +164,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
 }
 
 // A labelled segmented control for one match setting (host lobby).
-export function SettingRow({ label, options, value, onChange }) {
+function SettingRow({ label, options, value, onChange }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <p className={EYEBROW}>{label}</p>
@@ -172,7 +172,7 @@ export function SettingRow({ label, options, value, onChange }) {
         {options.map((o) => {
           const active = o.value === value;
           return (
-            <button
+            <button type="button"
               key={String(o.value)}
               onClick={() => onChange(o.value)}
               aria-pressed={active}

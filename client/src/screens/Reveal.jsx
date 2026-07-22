@@ -13,7 +13,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
   const isArtist = reveal?.mode === "ARTIST";
   const leaderboard =
     reveal?.leaderboard ??
-    [...results].sort((a, b) => b.score - a.score).map((p, i) => ({ rank: i + 1, ...p }));
+    results.toSorted((a, b) => b.score - a.score).map((p, i) => ({ rank: i + 1, ...p }));
   const winnerResult = winner ? results.find((r) => r.name === winner.name) : null;
   const winnerPoints = winnerResult?.pointsEarned ?? 0;
   const winnerStreak = winnerResult?.streakBonus ?? 0;
@@ -115,7 +115,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
 
 // Correct / wrong / no-answer marker for the reveal list. `delay` syncs the
 // pop with the row's own stagger so the mark lands just after the row shows.
-export function StatusDot({ correct, answered, delay = 0 }) {
+function StatusDot({ correct, answered, delay = 0 }) {
   const cls = !answered ? "text-dim" : correct ? "text-good" : "text-bad";
   const mark = !answered ? "○" : correct ? "✓" : "✗";
   const label = !answered ? "No answer" : correct ? "Correct" : "Incorrect";

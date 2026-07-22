@@ -31,7 +31,7 @@ export function Home({ games, stats, onOpen, onProfile }) {
         </p>
       </div>
 
-      <button
+      <button type="button"
         onClick={onProfile}
         className={`${PANEL} flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:border-amber/60`}
       >
@@ -57,10 +57,10 @@ export function Home({ games, stats, onOpen, onProfile }) {
   );
 }
 
-export function GameCard({ game, onOpen }) {
+function GameCard({ game, onOpen }) {
   const playable = game.status === "play";
   return (
-    <button
+    <button type="button"
       onClick={() => playable && onOpen(game)}
       disabled={!playable}
       className={`${PANEL} flex items-start gap-3 px-4 py-4 text-left transition-colors ${
@@ -88,18 +88,19 @@ export function GameCard({ game, onOpen }) {
   );
 }
 
-export function WhySnippet() {
-  const items = [
-    { t: "Massive library", d: "Real preview clips across every genre, re-sampled every round." },
-    { t: "Real-time multiplayer", d: "Private rooms, up to 8 players, scored by speed." },
-    { t: "Your way", d: "Pick rounds, timer, answers, era, and title-vs-artist mode." },
-    { t: "Completely free", d: "No downloads, no account needed. Just open and play." },
-  ];
+const WHY_ITEMS = [
+  { t: "Massive library", d: "Real preview clips across every genre, re-sampled every round." },
+  { t: "Real-time multiplayer", d: "Private rooms, up to 8 players, scored by speed." },
+  { t: "Your way", d: "Pick rounds, timer, answers, era, and title-vs-artist mode." },
+  { t: "Completely free", d: "No downloads, no account needed. Just open and play." },
+];
+
+function WhySnippet() {
   return (
     <div>
       <p className={EYEBROW}>Why Snippet</p>
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {items.map((i) => (
+        {WHY_ITEMS.map((i) => (
           <div key={i.t} className={`${PANEL} px-4 py-3`}>
             <p className="font-console text-sm uppercase tracking-wide text-bone">{i.t}</p>
             <p className="mt-1 font-console text-xs leading-relaxed text-dim">{i.d}</p>
@@ -110,7 +111,7 @@ export function WhySnippet() {
   );
 }
 
-export const FAQ_ITEMS = [
+const FAQ_ITEMS = [
   {
     q: "What makes a good guess-the-song game?",
     a: "A big music library, fair audio, and fast speed-scored rounds. Snippet adds private rooms, host settings, and reconnect so a dropped player keeps their score.",
@@ -129,7 +130,7 @@ export const FAQ_ITEMS = [
   },
 ];
 
-export function Faq() {
+function Faq() {
   const [open, setOpen] = useState(-1);
   return (
     <div>
@@ -139,7 +140,7 @@ export function Faq() {
           const isOpen = open === i;
           return (
             <div key={i} className={PANEL}>
-              <button
+              <button type="button"
                 onClick={() => setOpen(isOpen ? -1 : i)}
                 aria-expanded={isOpen}
                 aria-controls={`faq-answer-${i}`}
@@ -159,7 +160,7 @@ export function Faq() {
   );
 }
 
-export function SiteFooter() {
+function SiteFooter() {
   return (
     <footer className="border-t border-rule pt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -185,7 +186,7 @@ export function Profile({ stats, onBack }) {
   ];
   return (
     <div className="animate-rise space-y-6">
-      <button onClick={onBack} className={`${EYEBROW} inline-flex min-h-11 items-center hover:text-amber`}>
+      <button type="button" onClick={onBack} className={`${EYEBROW} inline-flex min-h-11 items-center hover:text-amber`}>
         ‹ Home
       </button>
       <div>
@@ -205,7 +206,7 @@ export function Profile({ stats, onBack }) {
 }
 
 // ---------- Slide-in side menu ----------
-export function LanguageSelect() {
+function LanguageSelect() {
   const [lang, setLang] = useState("EN");
   return (
     <select
@@ -277,7 +278,7 @@ export function SideMenu({ games, onClose, onHome, onOpen, onProfile }) {
       >
         <div className="flex items-center justify-between">
           <span className="font-marquee text-xl font-black uppercase tracking-tight text-bone">Snippet</span>
-          <button
+          <button type="button"
             onClick={onClose}
             aria-label="Close menu"
             className="inline-flex min-h-11 min-w-11 items-center justify-center font-console text-xl text-dim transition-colors hover:text-pink"
@@ -290,7 +291,7 @@ export function SideMenu({ games, onClose, onHome, onOpen, onProfile }) {
         <ul className="mt-3 space-y-1">
           {playable.map((g) => (
             <li key={g.key}>
-              <button
+              <button type="button"
                 onClick={() => onOpen(g)}
                 className="flex min-h-11 w-full items-center gap-3 px-1 py-2 text-left font-console text-sm text-bone transition-colors hover:text-pink"
               >
@@ -304,12 +305,12 @@ export function SideMenu({ games, onClose, onHome, onOpen, onProfile }) {
         <p className={`${EYEBROW} mt-8`}>You</p>
         <ul className="mt-3 space-y-1">
           <li>
-            <button onClick={onHome} className="inline-flex min-h-11 items-center px-1 py-2 font-console text-sm text-bone transition-colors hover:text-pink">
+            <button type="button" onClick={onHome} className="inline-flex min-h-11 items-center px-1 py-2 font-console text-sm text-bone transition-colors hover:text-pink">
               All games
             </button>
           </li>
           <li>
-            <button onClick={onProfile} className="inline-flex min-h-11 items-center px-1 py-2 font-console text-sm text-bone transition-colors hover:text-pink">
+            <button type="button" onClick={onProfile} className="inline-flex min-h-11 items-center px-1 py-2 font-console text-sm text-bone transition-colors hover:text-pink">
               My profile
             </button>
           </li>
@@ -324,7 +325,7 @@ export function SideMenu({ games, onClose, onHome, onOpen, onProfile }) {
           Share the game with friends for even more fun.
         </p>
       </nav>
-      <button aria-label="Close menu" onClick={onClose} className="flex-1 bg-void/70 backdrop-blur-sm" />
+      <button type="button" aria-label="Close menu" onClick={onClose} className="flex-1 bg-void/70 backdrop-blur-sm" />
     </div>
   );
 }

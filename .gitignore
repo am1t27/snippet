@@ -15,6 +15,7 @@ _*.mjs
 # build output
 client/dist/
 dist/
+graphify-out/
 
 # env (never commit real secrets; .env.example is fine)
 .env

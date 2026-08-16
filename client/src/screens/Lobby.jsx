@@ -6,22 +6,14 @@ import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST, Avatar, Chat } from "../ui";
 // catalog/genres.js registry (its GENRE_KEYS allowlist) — the server
 // re-validates, so an out-of-sync entry degrades to the default, never breaks.
 const GENRES = [
-  { label: "HIP-HOP", value: "hip-hop" },
-  { label: "RAP", value: "rap" },
+  { label: "HIP-HOP/RAP", value: "hip-hop" },
   { label: "DRILL", value: "drill" },
   { label: "TRAP", value: "trap" },
   { label: "R&B", value: "r&b" },
   { label: "POP", value: "pop" },
-  { label: "ROCK", value: "rock" },
-  { label: "INDIE", value: "alternative" },
+  { label: "INDIE", value: "indie" },
   { label: "COUNTRY", value: "country" },
-  { label: "DANCE", value: "dance" },
-  { label: "LATIN", value: "latin" },
-  { label: "AFROBEATS", value: "afrobeats" },
-  { label: "K-POP", value: "k-pop" },
   { label: "BOLLYWOOD", value: "bollywood" },
-  { label: "METAL", value: "metal" },
-  { label: "REGGAE", value: "reggae" },
 ];
 
 // Host-configurable match settings. Each option is { label, value } and the

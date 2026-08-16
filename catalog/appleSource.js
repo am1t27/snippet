@@ -32,17 +32,12 @@ export const LOOKUP_BATCH = 100; // iTunes lookup accepts 100 comma-separated id
 const REQUEST_PACE_MS = Number(process.env.INGEST_PACE_MS) || 250;
 const MAX_RETRIES = 2;
 
-// Storefronts worth sweeping by default: the big streaming markets plus the ones
-// that carry genres the US chart never surfaces (Afrobeats, Bollywood, K-Pop,
-// Música Mexicana, Sertanejo). Override with INGEST_STOREFRONTS=us,gb,… or "all".
-export const DEFAULT_STOREFRONTS = [
-  "us", "gb", "ca", "au", "ie", "nz",
-  "in", "ng", "za", "ke", "gh",
-  "br", "mx", "ar", "co", "cl", "es",
-  "fr", "de", "it", "nl", "se", "no", "pl", "pt",
-  "jp", "kr", "id", "ph", "th", "vn", "my", "sg", "tw", "hk",
-  "ae", "sa", "eg", "tr", "il",
-];
+// Storefronts worth sweeping by default: the English-language markets that feed
+// the western genre families, plus India for the Bollywood family. Charts from
+// other markets would mostly ingest tracks no playable family can classify
+// (they'd be dropped at normalize), so sweeping them is wasted requests.
+// Override with INGEST_STOREFRONTS=us,gb,… when that changes.
+export const DEFAULT_STOREFRONTS = ["us", "gb", "ca", "au", "ie", "nz", "in"];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

@@ -5,25 +5,26 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node --env-file-if-exists=.env server.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ingest": "node catalog/ingest.js",
-    "ingest:charts": "node catalog/ingest.js charts",
-    "ingest:artists": "node catalog/ingest.js artists"
+    "ingest": "node --env-file-if-exists=.env catalog/ingest.js",
+    "ingest:charts": "node --env-file-if-exists=.env catalog/ingest.js charts",
+    "ingest:artists": "node --env-file-if-exists=.env catalog/ingest.js artists"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.9"
   },
   "dependencies": {
     "google-auth-library": "^9.14.0",
     "node-fetch": "^3.3.2",
+    "pg": "^8.23.0",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
     "vitest": "^2.1.8"
   },
   "comments": {
-    "optionalScaleDeps": "These are loaded lazily ONLY when the matching env var is set (see DEPLOY.md). Install them on the host to enable: '@socket.io/redis-adapter' + 'ioredis' (REDIS_URL, multi-instance), 'pg' (DATABASE_URL, persistent leaderboard), '@sentry/node' (SENTRY_DSN, error monitoring)."
+    "optionalScaleDeps": "Loaded lazily ONLY when the matching env var is set (see DEPLOY.md): '@socket.io/redis-adapter' + 'ioredis' (REDIS_URL, multi-instance), '@sentry/node' (SENTRY_DSN, error monitoring). 'pg' is a regular dependency now — with DATABASE_URL set it persists the song catalog + global leaderboard; without it both fall back gracefully."
   }
 }

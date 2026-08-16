@@ -24,7 +24,7 @@ const POOL = [
 describe("sanitizeSettings", () => {
   it("accepts valid values", () => {
     expect(
-      sanitizeSettings({ rounds: 15, roundMs: 7500, optionsCount: 6, mode: "artist", decade: "2010s", clip: "intro", genre: "rap" })
+      sanitizeSettings({ rounds: 15, roundMs: 7500, optionsCount: 6, mode: "artist", decade: "2010s", clip: "intro", genre: "bollywood" })
     ).toEqual({
       rounds: 15,
       roundMs: 7500,
@@ -32,8 +32,10 @@ describe("sanitizeSettings", () => {
       mode: "ARTIST",
       decade: "2010s",
       clip: "INTRO",
-      genre: "rap",
+      genre: "bollywood",
     });
+    // "rap" is no longer its own family — it clamps to the hip-hop default.
+    expect(sanitizeSettings({ genre: "rap" }).genre).toBe("hip-hop");
   });
 
   it("clamps every off-list / hostile field back to the default", () => {

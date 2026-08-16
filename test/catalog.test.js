@@ -41,13 +41,22 @@ describe("genres registry", () => {
     expect(GENRE_KEYS[0]).toBe("hip-hop");
   });
 
+  it("keeps exactly the playable families", () => {
+    expect(GENRE_KEYS).toEqual(["hip-hop", "drill", "trap", "r&b", "pop", "indie", "country", "bollywood"]);
+  });
+
   it("maps Apple labels to families; drill/trap stay seeded-only", () => {
-    expect(familiesForAppleGenre("Hip-Hop/Rap")).toEqual(expect.arrayContaining(["hip-hop", "rap"]));
+    expect(familiesForAppleGenre("Hip-Hop/Rap")).toContain("hip-hop");
     expect(familiesForAppleGenre("Hip-Hop/Rap")).not.toContain("drill");
+    expect(familiesForAppleGenre("Hip-Hop/Rap")).not.toContain("trap");
     expect(familiesForAppleGenre("R&B/Soul")).toContain("r&b");
-    expect(familiesForAppleGenre("Música Mexicana")).toContain("latin");
-    expect(familiesForAppleGenre("Afrobeats")).toContain("afrobeats");
-    expect(familiesForAppleGenre("K-Pop")).toContain("k-pop");
+    expect(familiesForAppleGenre("Alternative")).toContain("indie");
+    expect(familiesForAppleGenre("Bollywood")).toContain("bollywood");
+    expect(familiesForAppleGenre("Punjabi Pop")).toContain("bollywood");
+    expect(familiesForAppleGenre("Country")).toContain("country");
+    // Removed families really are gone.
+    expect(familiesForAppleGenre("K-Pop")).toEqual([]);
+    expect(familiesForAppleGenre("Música Mexicana")).toEqual([]);
     expect(familiesForAppleGenre("Nonexistent Genre")).toEqual([]);
     expect(seedArtistsFor("drill").length).toBeGreaterThan(0);
     expect(seedArtistsFor("nope")).toEqual([]);
@@ -64,7 +73,22 @@ describe("normalize", () => {
       previewUrl: "https://cdn/preview.m4a",
       releaseYear: 2015,
     });
-    expect(row.genreKeys).toEqual(expect.arrayContaining(["hip-hop", "rap"]));
+    expect(row.genreKeys).toContain("hip-hop");
+  });
+
+  it("drops non-original versions that would mislabel decades", () => {
+    expect(toCatalogRow(raw({ trackName: "Song (Live)" }))).toBeNull();
+    expect(toCatalogRow(raw({ trackName: "Song (Karaoke Version)" }))).toBeNull();
+    expect(toCatalogRow(raw({ trackName: "Song (Remastered 2011)" }))).toBeNull();
+    expect(toCatalogRow(raw({ trackName: "Song (Sped Up)" }))).toBeNull();
+    expect(toCatalogRow(raw({ collectionName: "Live At Wembley" }))).toBeNull();
+    expect(toCatalogRow(raw({ collectionName: "Tribute to Artist" }))).toBeNull();
+    // Hits compilations: the one album type observed carrying wrong dates.
+    expect(toCatalogRow(raw({ collectionName: "For the Record: 41 Number One Hits" }))).toBeNull();
+    expect(toCatalogRow(raw({ collectionName: "The Essential Artist" }))).toBeNull();
+    // Plain originals survive, including feat. suffixes.
+    expect(toCatalogRow(raw({ trackName: "Song (feat. Guest)" }))).not.toBeNull();
+    expect(toCatalogRow(raw({ collectionName: "Thriller" }))).not.toBeNull();
   });
 
   it("drops unusable tracks: no preview, too short, unclassifiable", () => {
@@ -75,7 +99,7 @@ describe("normalize", () => {
 
   it("seed genre tags a track into a seeded-only family and merges on dupes", () => {
     const row = toCatalogRow(raw(), ["drill"]);
-    expect(row.genreKeys).toEqual(expect.arrayContaining(["hip-hop", "rap", "drill"]));
+    expect(row.genreKeys).toEqual(expect.arrayContaining(["hip-hop", "drill"]));
 
     const rows = toCatalogRows([raw(), raw({ primaryGenreName: "Pop" })], ["trap"]);
     expect(rows).toHaveLength(1); // same trackId collapses

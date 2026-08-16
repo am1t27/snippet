@@ -145,8 +145,13 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
   runIngest(mode).then(async (stats) => {
     if (stats) {
       console.log(`Catalog: ${stats.total} tracks (${stats.backend})`);
+      const DECADES = ["2020s", "2010s", "2000s", "1990s", "1980s", "pre-1980", "unknown"];
+      console.log(`  ${"genre".padEnd(10)} ${"total".padStart(6)}  ${DECADES.map((d) => d.padStart(8)).join("")}`);
       for (const [g, n] of Object.entries(stats.byGenre).sort((a, b) => b[1] - a[1])) {
-        console.log(`  ${g.padEnd(12)} ${n}`);
+        const per = stats.byGenreDecade?.[g] || {};
+        console.log(
+          `  ${g.padEnd(10)} ${String(n).padStart(6)}  ${DECADES.map((d) => String(per[d] || 0).padStart(8)).join("")}`
+        );
       }
     }
     process.exit(stats ? 0 : 1);

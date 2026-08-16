@@ -15,7 +15,7 @@
 import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { sampleDiverse, filterDecade, decadeRange } from "./sample.js";
+import { sampleDiverse, decadeRange } from "./sample.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // Resolved per call, not at import: tests (and ops) set CATALOG_FILE at runtime.
@@ -172,21 +172,44 @@ export async function upsertTracks(list) {
 
 // ----- reads -----
 
+// Decade bucket for stats: "2020s"…"1980s", "pre-1980", or "unknown".
+function decadeKeyOf(year) {
+  if (year == null || !Number.isFinite(Number(year))) return "unknown";
+  const y = Number(year);
+  if (y < 1980) return "pre-1980";
+  return `${Math.floor(y / 10) * 10}s`;
+}
+
 export async function catalogStats() {
   if (backend === "postgres") {
     const total = await pool.query("SELECT count(*)::int AS n FROM catalog_tracks");
-    const byGenre = await pool.query(
-      "SELECT g AS genre, count(*)::int AS n FROM catalog_tracks, unnest(genre_keys) AS g GROUP BY g ORDER BY n DESC"
+    const res = await pool.query(
+      `SELECT g AS genre,
+              CASE WHEN release_year IS NULL THEN 'unknown'
+                   WHEN release_year < 1980 THEN 'pre-1980'
+                   ELSE ((release_year / 10) * 10)::text || 's' END AS decade,
+              count(*)::int AS n
+         FROM catalog_tracks, unnest(genre_keys) AS g
+        GROUP BY 1, 2`
     );
-    return {
-      backend,
-      total: total.rows[0]?.n ?? 0,
-      byGenre: Object.fromEntries(byGenre.rows.map((r) => [r.genre, r.n])),
-    };
+    const byGenre = {};
+    const byGenreDecade = {};
+    for (const r of res.rows) {
+      byGenre[r.genre] = (byGenre[r.genre] || 0) + r.n;
+      (byGenreDecade[r.genre] = byGenreDecade[r.genre] || {})[r.decade] = r.n;
+    }
+    return { backend, total: total.rows[0]?.n ?? 0, byGenre, byGenreDecade };
   }
   const byGenre = {};
-  for (const r of rows.values()) for (const g of r.genreKeys || []) byGenre[g] = (byGenre[g] || 0) + 1;
-  return { backend, total: rows.size, byGenre };
+  const byGenreDecade = {};
+  for (const r of rows.values()) {
+    const decade = decadeKeyOf(r.releaseYear);
+    for (const g of r.genreKeys || []) {
+      byGenre[g] = (byGenre[g] || 0) + 1;
+      (byGenreDecade[g] = byGenreDecade[g] || {})[decade] = ((byGenreDecade[g] || {})[decade] || 0) + 1;
+    }
+  }
+  return { backend, total: rows.size, byGenre, byGenreDecade };
 }
 
 // How many tracks the catalog holds for one genre — the server uses this to
@@ -202,24 +225,38 @@ export async function genreCount(genre) {
   return n;
 }
 
-async function candidates(genre, count) {
+// Random candidate rows for one genre, optionally constrained to a year range.
+// The range must be part of the QUERY (not applied to its result): the random
+// LIMIT would otherwise wash out thin decades — a 5%-of-the-pool decade would
+// land ~5% of the candidates and always look starved.
+async function candidates(genre, count, range = null) {
   const key = String(genre ?? "").toLowerCase();
   const limit = Math.min(CANDIDATE_CAP, Math.max(count * CANDIDATE_MULTIPLIER, count));
   if (backend === "postgres") {
+    const params = [key];
+    let where = "genre_keys @> ARRAY[$1]";
+    if (range) {
+      params.push(range[0], range[1]);
+      where += " AND release_year BETWEEN $2 AND $3";
+    }
     const res = await pool.query(
       `SELECT track_id AS "trackId", track_name AS "trackName", artist_name AS "artistName",
               preview_url AS "previewUrl", release_year AS "releaseYear", base_title AS "baseTitle",
               apple_genre AS "appleGenre"
          FROM catalog_tracks
-        WHERE genre_keys @> ARRAY[$1]
+        WHERE ${where}
         ORDER BY random()
-        LIMIT $2`,
-      [key, limit]
+        LIMIT $${params.length + 1}`,
+      [...params, limit]
     );
     return res.rows;
   }
   const all = [];
-  for (const r of rows.values()) if ((r.genreKeys || []).includes(key)) all.push(r);
+  for (const r of rows.values()) {
+    if (!(r.genreKeys || []).includes(key)) continue;
+    if (range && !(r.releaseYear != null && r.releaseYear >= range[0] && r.releaseYear <= range[1])) continue;
+    all.push(r);
+  }
   return all;
 }
 
@@ -234,14 +271,18 @@ export async function sampleTracks({ genre, decade = "all", count = 20 } = {}) {
   const n = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
   if (n === 0) return [];
 
+  // Prefer the requested decade (constrained at the query level), but never
+  // start a game with a starved pool: fall back to the full genre pool when the
+  // decade can't fill the round after title-dedupe/diversity sampling.
+  const range = decadeRange(decade);
+  if (range) {
+    const inDecade = await candidates(genre, n, range);
+    const sampled = sampleDiverse(inDecade, n);
+    if (sampled.length >= n) return sampled;
+  }
   const pool_ = await candidates(genre, n);
   if (pool_.length === 0) return [];
-
-  // Prefer the requested decade, but never start a game with a starved pool:
-  // fall back to the full genre pool when the decade can't fill the round.
-  const inDecade = decadeRange(decade) ? filterDecade(pool_, decade) : pool_;
-  const usable = inDecade.length >= n ? inDecade : pool_;
-  return sampleDiverse(usable, n);
+  return sampleDiverse(pool_, n);
 }
 
 // Test/teardown hook.

@@ -89,6 +89,12 @@ export async function ingestArtists(genreKeys = GENRE_KEYS) {
 
 let running = false;
 
+// True while a run is in flight. Lets callers (the admin refresh endpoint)
+// report "already running" instead of silently no-op'ing.
+export function ingestRunning() {
+  return running;
+}
+
 // Full ingest. Serialized: overlapping runs (boot + interval timer) collapse
 // into one.
 export async function runIngest(mode = "full") {

@@ -35,6 +35,21 @@ Snippet has **two deployable parts** that must go to **two different kinds of ho
    fallback, so nothing blocks. Check progress at `GET /catalog`.
    Manual runs: `npm run ingest` (full), `npm run ingest:charts` (refresh).
 
+   **Refreshing a deployed catalog on demand.** The server already refreshes
+   itself (a chart sweep at every boot, then every 24h), but to force one
+   without waiting, set `ADMIN_TOKEN` to a random secret and POST:
+
+   ```
+   curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+     "https://<backend>/catalog/refresh?mode=charts"
+   ```
+
+   `mode` is `charts` (fast, ~1 min), `full` (charts + every artist seed,
+   ~5 min), or `artists`. Responds `202 {"started":true}` and runs detached —
+   watch `GET /catalog` for the totals to move. A second call while one is in
+   flight gets `409 already_running`. **With `ADMIN_TOKEN` unset the route does
+   not exist**, so an unconfigured deploy exposes no admin surface.
+
    **Persisting it on Render** (optional but recommended — otherwise every
    deploy and every free-tier spin-down re-ingests from scratch):
    1. Render dashboard → **New → Postgres**, any name, same region as the
@@ -87,5 +102,6 @@ will fail on the deployed domain until you add it:
 | `GOOGLE_CLIENT_ID` | backend | for sign-in | server-side ID-token verification |
 | `NODE_ENV` | backend | prod: yes | enables fail-closed CORS |
 | `MAX_ROOMS` / `MAX_CONN_PER_IP` | backend | no | abuse caps (defaults 500 / 30) |
+| `ADMIN_TOKEN` | backend | no | enables `POST /catalog/refresh`; unset disables the route |
 | `VITE_SOCKET_URL` | client | prod: yes | backend URL the SPA connects to |
 | `VITE_GOOGLE_CLIENT_ID` | client | for sign-in | renders the Google button |

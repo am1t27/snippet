@@ -6,11 +6,11 @@
 // correct answer is NEVER sent to clients while a round is live.
 
 import http from "node:http";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual, createHash } from "node:crypto";
 import { Server } from "socket.io";
 import { getSongs } from "./songProvider.js";
 import { initCatalog, catalogStats } from "./catalog/store.js";
-import { scheduleIngest } from "./catalog/ingest.js";
+import { scheduleIngest, runIngest, ingestRunning } from "./catalog/ingest.js";
 import { OAuth2Client } from "google-auth-library";
 import { maskProfanity } from "./profanity.js";
 import {
@@ -54,6 +54,10 @@ const EARLY_END_GRACE_MS = 3000; // keep the clip playing this long after everyo
 // above) so they can be unit-tested without a running server.
 const REACTIONS = ["GG", "WOW", "!!", "??", "★", "♥"];
 const CHAT_MAX_LEN = 200;
+
+// Shared secret for the manual catalog refresh (POST /catalog/refresh). Unset
+// (the default) disables the route entirely — see the handler.
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 
 // Google OAuth (optional). If GOOGLE_CLIENT_ID is unset, sign-in is disabled and
 // everyone plays as a guest.
@@ -164,6 +168,25 @@ function ipOf(socket) {
   if (fwd) return String(fwd).split(",")[0].trim();
   return socket.handshake.address || "unknown";
 }
+// Same idea for plain HTTP requests (admin route logging).
+function ipOfRequest(req) {
+  const fwd = req.headers["x-forwarded-for"];
+  if (fwd) return String(fwd).split(",")[0].trim();
+  return (req.socket && req.socket.remoteAddress) || "unknown";
+}
+
+// Constant-time bearer-token check for the admin route. Compares over fixed-
+// length digests so neither the token's length nor its content leaks through
+// response timing; timingSafeEqual itself throws on length mismatch.
+function adminAuthorized(req) {
+  const header = req.headers.authorization || "";
+  const presented = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!presented) return false;
+  const a = createHash("sha256").update(presented).digest();
+  const b = createHash("sha256").update(ADMIN_TOKEN).digest();
+  return timingSafeEqual(a, b);
+}
+
 // Live connection count per IP (incremented on connect, decremented on disconnect).
 const connectionsByIp = new Map();
 
@@ -583,6 +606,39 @@ const httpServer = http.createServer(async (req, res) => {
     const rows = await topScores(20);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ leaderboard: rows }));
+    return;
+  }
+
+  // Manual catalog refresh. Kicks off the same ingest the 24h timer runs, so a
+  // fresh chart sweep doesn't have to wait for a restart or the next tick.
+  // Gated on ADMIN_TOKEN: unset means the route doesn't exist at all (falls
+  // through to the health handler), so an unconfigured deploy exposes no admin
+  // surface to probe. Answers 202 immediately — the ingest takes minutes and
+  // runs detached; poll GET /catalog to watch the totals move.
+  if (req.method === "POST" && req.url && req.url.startsWith("/catalog/refresh") && ADMIN_TOKEN) {
+    if (!adminAuthorized(req)) {
+      log.warn("catalog refresh: unauthorized", { ip: ipOfRequest(req) });
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+    if (ingestRunning()) {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ started: false, reason: "already_running" }));
+      return;
+    }
+    // "charts" is the cheap refresh (~1 min); "full" also re-seeds every
+    // artist (~5 min). Anything else is rejected rather than silently coerced.
+    const mode = new URL(req.url, "http://localhost").searchParams.get("mode") || "charts";
+    if (!["charts", "full", "artists"].includes(mode)) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "mode must be charts, full, or artists" }));
+      return;
+    }
+    log.info("catalog refresh: started", { mode });
+    runIngest(mode).catch(() => {}); // detached: runIngest already logs failures
+    res.writeHead(202, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ started: true, mode }));
     return;
   }
 

@@ -34,6 +34,20 @@ Snippet has **two deployable parts** that must go to **two different kinds of ho
    Until the first ingest finishes, matches are served by the live iTunes
    fallback, so nothing blocks. Check progress at `GET /catalog`.
    Manual runs: `npm run ingest` (full), `npm run ingest:charts` (refresh).
+
+   **Persisting it on Render** (optional but recommended — otherwise every
+   deploy and every free-tier spin-down re-ingests from scratch):
+   1. Render dashboard → **New → Postgres**, any name, same region as the
+      backend service.
+   2. Open the database → copy its **Internal Database URL**.
+   3. Backend service → **Environment** → add `DATABASE_URL` = that URL → save.
+      Render redeploys; the `catalog_tracks` table is created automatically on
+      boot and the first ingest fills it (a few minutes, in the background).
+   No other change is needed: `pg` is already a dependency and `npm start` is
+   plain `node server.js`, so nothing about the start command or Node version
+   has to change. Render's free Postgres is deleted after its trial window — if
+   that happens the server logs a warning and falls back to the JSON snapshot,
+   it does not go down.
 4. Note the public URL, e.g. `https://snippet-server.up.railway.app`.
 
 ## 2. Client → Vercel

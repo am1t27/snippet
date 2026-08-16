@@ -2,8 +2,27 @@
 import { useState } from "react";
 import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST, Avatar, Chat } from "../ui";
 
-// Genre options the host can pick before starting (Feature 1).
-const GENRES = ["HIP-HOP", "R&B", "RAP", "DRILL", "TRAP"];
+// Genre options the host can pick before starting. Values mirror the server's
+// catalog/genres.js registry (its GENRE_KEYS allowlist) — the server
+// re-validates, so an out-of-sync entry degrades to the default, never breaks.
+const GENRES = [
+  { label: "HIP-HOP", value: "hip-hop" },
+  { label: "RAP", value: "rap" },
+  { label: "DRILL", value: "drill" },
+  { label: "TRAP", value: "trap" },
+  { label: "R&B", value: "r&b" },
+  { label: "POP", value: "pop" },
+  { label: "ROCK", value: "rock" },
+  { label: "INDIE", value: "alternative" },
+  { label: "COUNTRY", value: "country" },
+  { label: "DANCE", value: "dance" },
+  { label: "LATIN", value: "latin" },
+  { label: "AFROBEATS", value: "afrobeats" },
+  { label: "K-POP", value: "k-pop" },
+  { label: "BOLLYWOOD", value: "bollywood" },
+  { label: "METAL", value: "metal" },
+  { label: "REGGAE", value: "reggae" },
+];
 
 // Host-configurable match settings. Each option is { label, value } and the
 // value is sent to the server, which re-validates against its own allowlist.
@@ -33,6 +52,7 @@ const DECADE_OPTS = [
   { label: "2010s", value: "2010s" },
   { label: "2000s", value: "2000s" },
   { label: "90s", value: "1990s" },
+  { label: "80s", value: "1980s" },
 ];
 const CLIP_OPTS = [
   { label: "Random", value: "RANDOM" },
@@ -44,7 +64,7 @@ const CLIP_OPTS = [
 // ---------- Lobby ----------
 export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, clipPref, onLeave }) {
   const [copied, setCopied] = useState(false);
-  const [genre, setGenre] = useState("HIP-HOP");
+  const [genre, setGenre] = useState(GENRES[0].value);
   // Match settings (host only). Defaults mirror the server's DEFAULT_SETTINGS;
   // `clip` is seeded from the Home card the host arrived through (Heardle=INTRO).
   const [settings, setSettings] = useState({
@@ -56,7 +76,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
     clip: clipPref === "INTRO" ? "INTRO" : "RANDOM",
   });
   const setField = (key) => (value) => setSettings((s) => ({ ...s, [key]: value }));
-  const handleStart = () => onStart({ ...settings, genre: genre.toLowerCase() });
+  const handleStart = () => onStart({ ...settings, genre });
   const joinLink =
     typeof window !== "undefined" && code ? `${window.location.origin}?room=${code}` : "";
   const copy = async () => {
@@ -118,11 +138,11 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
             <p className={EYEBROW}>Genre</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {GENRES.map((g) => {
-                const active = g === genre;
+                const active = g.value === genre;
                 return (
                   <button type="button"
-                    key={g}
-                    onClick={() => setGenre(g)}
+                    key={g.value}
+                    onClick={() => setGenre(g.value)}
                     aria-pressed={active}
                     className={`min-h-11 px-3 py-2 font-console text-xs uppercase tracking-[0.2em] transition-[color,border-color,background-color,transform] active:scale-[.96] ${
                       active
@@ -130,7 +150,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
                         : "border border-rule text-dim hover:border-pink hover:text-pink"
                     }`}
                   >
-                    {g}
+                    {g.label}
                   </button>
                 );
               })}

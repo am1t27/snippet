@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node server.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "ingest": "node catalog/ingest.js",
+    "ingest:charts": "node catalog/ingest.js charts",
+    "ingest:artists": "node catalog/ingest.js artists"
   },
   "engines": {
     "node": ">=18"

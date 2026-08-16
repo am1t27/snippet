@@ -8,7 +8,9 @@
 import http from "node:http";
 import { randomUUID } from "node:crypto";
 import { Server } from "socket.io";
-import { fetchSongs } from "./itunesFetcher.js";
+import { getSongs } from "./songProvider.js";
+import { initCatalog, catalogStats } from "./catalog/store.js";
+import { scheduleIngest } from "./catalog/ingest.js";
 import { OAuth2Client } from "google-auth-library";
 import { maskProfanity } from "./profanity.js";
 import {
@@ -448,7 +450,7 @@ async function maybeRefreshPool(room) {
   if (room.usedTrackIds.size < room.pool.length - 4) return;
   room.refreshing = true;
   try {
-    const fresh = await fetchSongs(room.settings.genre, poolSizeFor(room.settings), {
+    const fresh = await getSongs(room.settings.genre, poolSizeFor(room.settings), {
       decade: room.settings.decade,
     });
     if (fresh && fresh.length >= room.settings.optionsCount) {
@@ -584,6 +586,15 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
+  // Catalog health: totals per genre. Same exposure judgment as /leaderboard —
+  // aggregate counts only, nothing operational.
+  if (req.method === "GET" && req.url && req.url.startsWith("/catalog")) {
+    const stats = await catalogStats().catch(() => ({ backend: "none", total: 0, byGenre: {} }));
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(stats));
+    return;
+  }
+
   // Health check only — deliberately no room/player counts, so operational
   // detail isn't exposed to arbitrary callers.
   res.writeHead(200, { "Content-Type": "application/json" });
@@ -662,6 +673,13 @@ async function maybeInitSentry() {
 maybeAttachRedis();
 maybeInitSentry();
 initStorage(log);
+
+// Song catalog: init the store, then kick off the background ingest (first run
+// builds the pool; later runs just refresh charts). Never blocks the server —
+// until the catalog is warm, matches are served by the live iTunes fallback.
+initCatalog(log).then(() => {
+  if (process.env.CATALOG_INGEST !== "off") scheduleIngest();
+});
 
 // Last-resort safety nets: log (and report) instead of crashing silently.
 process.on("uncaughtException", (err) => {
@@ -878,7 +896,7 @@ io.on("connection", (socket) => {
     room.settings = sanitizeSettings(payload);
     let pool;
     try {
-      pool = await fetchSongs(room.settings.genre, poolSizeFor(room.settings), {
+      pool = await getSongs(room.settings.genre, poolSizeFor(room.settings), {
         decade: room.settings.decade,
       });
     } catch {

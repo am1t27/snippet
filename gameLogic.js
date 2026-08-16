@@ -4,6 +4,7 @@
 // (except shuffle/buildRound, which use Math.random by design).
 
 import { maskProfanity } from "./profanity.js";
+import { GENRE_KEYS } from "./catalog/genres.js";
 
 // ----- Scoring constants -----
 export const QUESTION_BASE = 300;
@@ -17,12 +18,14 @@ export const OPTION_CHOICES = [4, 3, 6];
 export const MODE_CHOICES = ["TITLE", "ARTIST"];
 // "new" = last ~3 years (resolved dynamically in the fetcher); the rest are
 // fixed decade buckets. First item is the default.
-export const DECADE_CHOICES = ["all", "new", "2020s", "2010s", "2000s", "1990s"];
+export const DECADE_CHOICES = ["all", "new", "2020s", "2010s", "2000s", "1990s", "1980s"];
 // Clip start: RANDOM plays from a random offset; INTRO (Heardle-style) plays
 // from the very start of the track. The offset itself is applied client-side;
 // the server just records the choice and tells the client via state.clip.
 export const CLIP_CHOICES = ["RANDOM", "INTRO"];
-export const ALLOWED_GENRES = ["hip-hop", "r&b", "rap", "drill", "trap"];
+// Playable genres come from the catalog's genre registry (one source of truth
+// for ingest, validation, and the lobby picker). First key is the default.
+export const ALLOWED_GENRES = GENRE_KEYS;
 
 export const DEFAULT_SETTINGS = {
   rounds: ROUND_CHOICES[0],

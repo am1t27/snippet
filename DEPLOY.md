@@ -26,6 +26,14 @@ Snippet has **two deployable parts** that must go to **two different kinds of ho
    - `GOOGLE_CLIENT_ID=<your OAuth web client id>` — enables verified sign-in.
    - Optional: `MAX_ROOMS`, `MAX_CONN_PER_IP`, `DATABASE_URL` (+ `npm install pg`),
      `REDIS_URL`, `SENTRY_DSN`, `LOG_FORMAT=json`.
+4. **Song catalog**: on boot the server starts a background ingest that builds a
+   large local song pool from Apple's public chart feeds + per-genre artist
+   seeds (see `catalog/`). No key needed. With `DATABASE_URL` set the catalog
+   persists in Postgres; without it, it lives in a JSON snapshot on disk
+   (`CATALOG_FILE`) and simply re-ingests after a redeploy wipes the disk.
+   Until the first ingest finishes, matches are served by the live iTunes
+   fallback, so nothing blocks. Check progress at `GET /catalog`.
+   Manual runs: `npm run ingest` (full), `npm run ingest:charts` (refresh).
 4. Note the public URL, e.g. `https://snippet-server.up.railway.app`.
 
 ## 2. Client → Vercel

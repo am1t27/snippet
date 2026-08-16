@@ -164,6 +164,7 @@ const DECADE_RANGES = {
   "2010s": [2010, 2019],
   "2000s": [2000, 2009],
   "1990s": [1990, 1999],
+  "1980s": [1980, 1989],
 };
 // Resolve a decade key to an inclusive [lo, hi] year range. "new" is dynamic:
 // the last ~3 calendar years, so "New" always means recent regardless of when

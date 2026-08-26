@@ -9,6 +9,9 @@ body,
 }
 
 body {
+  /* Decorative bleed (e.g. the hero's glow-wash pseudo) must never widen the
+     page on small screens. clip, not hidden: no scroll container is created. */
+  overflow-x: clip;
   /* Indigo canvas + a faint dot grid for arcade-cabinet depth. */
   background-color: #13131e;
   background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),

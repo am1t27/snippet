@@ -1,6 +1,7 @@
 // Entry: sign in (Google or guest), create or join a room.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST } from "../ui";
+import { ParticleButton } from "../fx/interact";
 
 // ---------- Entry: sign in (Google or guest), create or join a room ----------
 export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumber, archiveDay, onArchive }) {
@@ -75,7 +76,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumb
         </p>
       )}
 
-      <button type="button"
+      <ParticleButton
         onClick={() => canPlay && onCreate(identityName, idToken)}
         disabled={!canPlay}
         aria-describedby={!canPlay ? "handle-hint" : undefined}
@@ -87,7 +88,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumb
             ? `Replay ${archiveDay}`
             : `Play Daily${dailyNumber > 0 ? ` #${dailyNumber}` : ""}`
           : "Create Room"}
-      </button>
+      </ParticleButton>
 
       {isDaily && (
         <p className="font-console text-xs leading-relaxed text-dim">

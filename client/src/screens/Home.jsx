@@ -1,6 +1,8 @@
 // Home hub, profile, and side menu — landing surfaces outside a room.
 import { useEffect, useRef, useState } from "react";
 import { EYEBROW, PANEL } from "../ui";
+import { BlinkingSquares } from "../fx/BlinkingSquares";
+import { ScrambleText } from "../fx/text";
 
 // The music-games catalog shown on the Home hub and in the side menu. Each
 // "play" game routes into the room flow (some preset a clip mode); "soon" games
@@ -20,12 +22,13 @@ export const GAMES = [
 export function Home({ games, stats, onOpen, onProfile, dailyInfo }) {
   return (
     <div className="cascade space-y-10">
-      <div className="glow-wash space-y-3">
+      <div className="glow-wash relative space-y-3 py-2">
+        <BlinkingSquares className="-z-10 opacity-55" />
         <p className="font-coin text-sm leading-relaxed text-pink">INSERT COIN</p>
         <h2 className="fs-display font-marquee font-black uppercase text-bone">
-          Guess the song.
+          <ScrambleText text="Guess the song." durationMs={800} />
           <br />
-          Beat your friends.
+          <ScrambleText text="Beat your friends." durationMs={800} delayMs={350} />
         </h2>
         <p className="font-console text-sm text-dim">
           Free real-time music games. Hear a snippet, name the track, score faster than everyone else.

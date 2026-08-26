@@ -92,6 +92,90 @@ body {
   background-position: 0 0, 4px 7px;
 }
 
+/* ----- Catalog effects (Originkit / KokonutUI ports) ----- */
+
+/* GlitchText (KokonutUI): pink/cyan clone layers jitter behind the real text.
+   data-text feeds the clones; clip-path slices give the broken-signal look. */
+.fx-glitch::before,
+.fx-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.fx-glitch::before {
+  color: #ff3d7f;
+  animation: fx-glitch-a 2.4s steps(1) infinite;
+}
+.fx-glitch::after {
+  color: #36d8ff;
+  animation: fx-glitch-b 2.4s steps(1) infinite;
+}
+@keyframes fx-glitch-a {
+  0%, 91%, 100% { transform: none; opacity: 0; clip-path: none; }
+  92% { transform: translate(-3px, 1px); opacity: 0.8; clip-path: inset(10% 0 55% 0); }
+  94% { transform: translate(2px, -1px); opacity: 0.8; clip-path: inset(60% 0 15% 0); }
+  96% { transform: translate(-2px, 0); opacity: 0.8; clip-path: inset(30% 0 40% 0); }
+}
+@keyframes fx-glitch-b {
+  0%, 91%, 100% { transform: none; opacity: 0; clip-path: none; }
+  93% { transform: translate(3px, -1px); opacity: 0.8; clip-path: inset(50% 0 20% 0); }
+  95% { transform: translate(-2px, 1px); opacity: 0.8; clip-path: inset(15% 0 65% 0); }
+  97% { transform: translate(2px, 0); opacity: 0.8; clip-path: inset(70% 0 5% 0); }
+}
+
+/* NeonBorder (Originkit): a slow conic sweep of light around a card's edge.
+   Wrap the card; ::before paints the traveling gradient in the 1px gutter. */
+.fx-neon-border {
+  position: relative;
+  padding: 1px;
+  overflow: hidden;
+}
+.fx-neon-border::before {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  background: conic-gradient(
+    from var(--fx-angle, 0deg),
+    transparent 0deg,
+    #ffc93c 40deg,
+    #ff3d7f 80deg,
+    transparent 140deg,
+    transparent 360deg
+  );
+  animation: fx-border-spin 3.2s linear infinite;
+}
+.fx-neon-border > * {
+  position: relative;
+  background: #1b1b2a;
+}
+@property --fx-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes fx-border-spin {
+  to { --fx-angle: 360deg; }
+}
+/* Fallback rotation for browsers without @property (the sweep still moves). */
+@supports not (background: conic-gradient(from var(--fx-angle, 0deg), red, blue)) {
+  .fx-neon-border::before { animation: spin 3.2s linear infinite; }
+}
+
+/* ClickFX (Originkit sniper): four ticks fly outward from the click point. */
+.fx-ping {
+  width: 2px;
+  height: 8px;
+  left: -1px;
+  top: -22px;
+  transform-origin: 1px 22px;
+  animation: fx-ping-fly 380ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+@keyframes fx-ping-fly {
+  0% { translate: 0 8px; opacity: 1; }
+  100% { translate: 0 -10px; opacity: 0; }
+}
+
 /* Screen-entrance choreography: direct children rise in a 40ms cascade.
    Replaces single-block animate-rise on screen roots. */
 .cascade > * {

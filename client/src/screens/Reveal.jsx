@@ -1,5 +1,6 @@
 // Reveal: round answer, winner card, per-player results, leaderboard.
 import { EYEBROW, PANEL, Avatar, Leaderboard, ReactionBar, useCountUp } from "../ui";
+import { GlitchText } from "../fx/text";
 
 // ---------- Reveal ----------
 export function Reveal({ reveal, myId, onReact, players }) {
@@ -94,7 +95,9 @@ export function Reveal({ reveal, myId, onReact, players }) {
           className="animate-rise border border-bad/50 bg-bad/5 px-5 py-6 text-center shadow-[0_0_30px_-10px_#FF4D6D]"
           style={{ animationDelay: "160ms" }}
         >
-          <p className="font-marquee text-2xl font-black uppercase tracking-tight text-bad">No one got it</p>
+          <p className="font-marquee text-2xl font-black uppercase tracking-tight text-bad">
+            <GlitchText text="No one got it" />
+          </p>
         </div>
       )}
 

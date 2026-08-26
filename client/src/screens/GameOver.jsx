@@ -1,6 +1,7 @@
 // Game over: champion, high scores, round history, chat, restart.
 import { useState } from "react";
 import { EYEBROW, PANEL, BTN_AMBER, Avatar, Chat, Leaderboard, useCountUp } from "../ui";
+import { GlitchText } from "../fx/text";
 
 // ---------- Game Over ----------
 export function GameOver({ gameOver, players, myId, onRestart, messages, onChat }) {
@@ -17,13 +18,13 @@ export function GameOver({ gameOver, players, myId, onRestart, messages, onChat 
   return (
     <div className="space-y-8">
       <p className="animate-rise text-center font-marquee text-4xl font-black uppercase tracking-tight text-bone [text-wrap:balance]">
-        Game Over
+        <GlitchText text="Game Over" />
       </p>
 
       {champ && (
+        <div className="fx-neon-border animate-rise" style={{ animationDelay: "120ms" }}>
         <div
-          className="animate-rise border border-amber/50 bg-amber/5 px-6 py-6 text-center shadow-[0_0_36px_-12px_#FFC93C]"
-          style={{ animationDelay: "120ms" }}
+          className="bg-amber/5 px-6 py-6 text-center"
         >
           <p className="font-coin text-xs text-amber">1UP · Champion</p>
           <div className="mt-3 flex items-center justify-center gap-3">
@@ -33,6 +34,7 @@ export function GameOver({ gameOver, players, myId, onRestart, messages, onChat 
           <p className="mt-1 animate-scoreroll font-marquee text-4xl font-black tabular-nums text-amber">
             {shownScore}
           </p>
+        </div>
         </div>
       )}
 

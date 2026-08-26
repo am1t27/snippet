@@ -24,6 +24,7 @@ import { GameOver } from "./screens/GameOver";
 import { DailyResults } from "./screens/DailyResults";
 import { LevelUp } from "./screens/LevelUp";
 import { DailyArchive } from "./screens/DailyArchive";
+import { ClickFX } from "./fx/interact";
 import { awardFor as xpAwardFor, progressWithin } from "./xp";
 import { getXpLocal, setXpLocal } from "./stats";
 
@@ -303,6 +304,7 @@ export default function App() {
         />
       )}
       {notice && <Toast message={notice} />}
+      <ClickFX />
       {award && award.leveledUp && <LevelUp award={award} onClose={dismissAward} />}
       <ReactionOverlay reactions={reactions} />
       <div className="sr-only" role="status" aria-live="polite">

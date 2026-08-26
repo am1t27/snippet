@@ -375,7 +375,7 @@ export default function App() {
       </div>
 
       {/* Single persistent, primed audio element reused across all rounds. */}
-      <audio ref={audioRef} preload="auto" className="hidden" />
+      <audio ref={audioRef} preload="auto" crossOrigin="anonymous" className="hidden" />
     </div>
   );
 }

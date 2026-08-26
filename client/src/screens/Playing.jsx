@@ -1,6 +1,7 @@
 // Playing: audio round, options, CRT timer, local countdown.
 import { useEffect, useRef, useState } from "react";
 import { EYEBROW, BTN_GHOST, ReactionBar } from "../ui";
+import { Waveform } from "../waveform";
 
 // Fallback scoring constants, mirroring server.js (banner uses roundMeta first).
 const QUESTION_BASE = 300;
@@ -124,6 +125,8 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
         round={state.round}
         total={roundSeconds}
       />
+
+      <Waveform audioRef={audioRef} />
 
       {audioError && (
         <button type="button"

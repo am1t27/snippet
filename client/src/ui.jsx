@@ -6,15 +6,19 @@ import sound from "./sound";
 // ---- Shared class fragments (drive the look across every screen) ----
 export const EYEBROW = "font-console text-[11px] uppercase tracking-[0.2em] text-dim";
 export const PANEL = "border border-rule bg-cabinet";
+// Panel that catches light on one edge — for hero cards (reveal, level-up).
+export const PANEL_LUX = "panel-lux bg-cabinet";
 // Primary CTA = pink with a soft neon glow.
 export const BTN_AMBER =
   "bg-pink px-5 py-4 font-console text-sm uppercase tracking-[0.2em] text-black " +
-  "shadow-[0_0_24px_-6px_#FF3D7F] transition-[transform,background-color] hover:bg-[#ff5e96] active:scale-[.96] " +
+  "shadow-[0_0_24px_-6px_#FF3D7F] transition-[transform,background-color,box-shadow] duration-150 ease-spring " +
+  "hover:bg-[#ff5e96] hover:-translate-y-0.5 hover:shadow-lift-pink active:scale-[.96] active:translate-y-0 " +
   "focus:outline-none focus:ring-2 focus:ring-pink focus:ring-offset-2 focus:ring-offset-void " +
   "disabled:cursor-not-allowed disabled:bg-rule disabled:text-dim disabled:shadow-none";
 export const BTN_GHOST =
   "border border-rule bg-cabinet px-5 py-3 font-console text-sm uppercase tracking-[0.2em] text-bone " +
-  "transition-colors hover:border-amber hover:text-amber active:scale-[.96] " +
+  "transition-[color,border-color,transform,box-shadow] duration-150 ease-spring " +
+  "hover:border-amber hover:text-amber hover:-translate-y-0.5 hover:shadow-lift-amber active:scale-[.96] active:translate-y-0 " +
   "focus:outline-none focus:ring-2 focus:ring-amber disabled:cursor-not-allowed disabled:opacity-50";
 
 // Reaction call-outs (must match the server's REACTIONS whitelist). Typographic,

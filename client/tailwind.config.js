@@ -64,6 +64,37 @@ export default {
           "0%, 100%": { transform: "scale(1)" },
           "50%": { transform: "scale(1.04)" },
         },
+        // Wrong answer: tight 3-axis shake, settles fast.
+        shake3: {
+          "0%, 100%": { transform: "translate(0,0) rotate(0)" },
+          "20%": { transform: "translate(-5px,1px) rotate(-0.4deg)" },
+          "40%": { transform: "translate(4px,-1px) rotate(0.4deg)" },
+          "60%": { transform: "translate(-3px,1px) rotate(-0.25deg)" },
+          "80%": { transform: "translate(2px,0) rotate(0.15deg)" },
+        },
+        // Correct answer: green wash floods the card then recedes.
+        flood: {
+          "0%": { boxShadow: "inset 0 0 0 0 rgba(61,240,122,0)" },
+          "30%": { boxShadow: "inset 0 0 120px 10px rgba(61,240,122,0.28)" },
+          "100%": { boxShadow: "inset 0 0 60px 0 rgba(61,240,122,0.12)" },
+        },
+        // Typographic starburst particle: shoots out along --burst-x/--burst-y.
+        burst: {
+          "0%": { transform: "translate(0,0) scale(.4)", opacity: "1" },
+          "100%": { transform: "translate(var(--burst-x), var(--burst-y)) scale(1)", opacity: "0" },
+        },
+        // Ghost marker pulse when the ghost "answers".
+        ghostblip: {
+          "0%": { transform: "scale(1)", opacity: "1" },
+          "50%": { transform: "scale(1.8)", opacity: ".7" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        // Level-up overlay: zoom in from deep, settle with a slight overshoot.
+        levelup: {
+          "0%": { transform: "scale(.6)", opacity: "0", filter: "blur(6px)" },
+          "70%": { transform: "scale(1.05)", opacity: "1", filter: "blur(0)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
       },
       animation: {
         blink: "blink 1s step-end infinite",
@@ -75,6 +106,20 @@ export default {
         lockin: "lockin 220ms cubic-bezier(.16,1,.3,1) both",
         digitpop: "digitpop 260ms cubic-bezier(0.2,0,0,1) both",
         beat: "beat 1s ease-in-out infinite",
+        shake3: "shake3 360ms cubic-bezier(.36,.07,.19,.97) both",
+        flood: "flood 700ms ease-out both",
+        burst: "burst 700ms cubic-bezier(0.2,0,0,1) both",
+        ghostblip: "ghostblip 500ms ease-out both",
+        levelup: "levelup 600ms cubic-bezier(.34,1.56,.64,1) both",
+      },
+      boxShadow: {
+        // Neon lifts for the springy hover state, one per accent.
+        "lift-pink": "0 6px 28px -8px rgba(255,61,127,0.55)",
+        "lift-amber": "0 6px 28px -8px rgba(255,201,60,0.5)",
+      },
+      transitionTimingFunction: {
+        // Springy overshoot for button lifts and pops.
+        spring: "cubic-bezier(.34,1.56,.64,1)",
       },
     },
   },

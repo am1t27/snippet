@@ -2,7 +2,7 @@
 // Rendered from the server's daily:finish payload; guests see their local
 // streak, verified players see their global rank.
 import { useEffect, useState } from "react";
-import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST } from "../ui";
+import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST, useCountUp } from "../ui";
 
 // "HH:MM:SS" until the next UTC midnight (when the next puzzle unlocks).
 function untilNextPuzzle() {
@@ -26,6 +26,7 @@ export function DailyResults({ finish, localStreak, onHome }) {
 
   const streak = finish.streak ?? localStreak ?? 0;
   const correct = finish.perRound.filter(Boolean).length;
+  const shownScore = useCountUp(finish.score, 900);
 
   const share = async () => {
     try {
@@ -38,10 +39,10 @@ export function DailyResults({ finish, localStreak, onHome }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-sm animate-rise space-y-6">
+    <div className="mx-auto w-full max-w-sm cascade space-y-6">
       <div>
         <p className={EYEBROW}>Daily #{finish.number} complete</p>
-        <p className="mt-3 font-marquee text-5xl font-black tabular-nums text-amber">{finish.score}</p>
+        <p className="fs-display mt-3 font-marquee font-black tabular-nums text-amber phosphor">{shownScore}</p>
         <p className="mt-2 font-console text-sm text-dim">
           {correct} of {finish.perRound.length} correct
         </p>

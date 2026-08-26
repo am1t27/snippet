@@ -19,10 +19,10 @@ export const GAMES = [
 // ---------- Home hub (landing) ----------
 export function Home({ games, stats, onOpen, onProfile, dailyInfo }) {
   return (
-    <div className="animate-rise space-y-10">
-      <div className="space-y-3">
+    <div className="cascade space-y-10">
+      <div className="glow-wash space-y-3">
         <p className="font-coin text-sm leading-relaxed text-pink">INSERT COIN</p>
-        <h2 className="font-marquee text-3xl font-black uppercase leading-[1.05] tracking-tight text-bone">
+        <h2 className="fs-display font-marquee font-black uppercase text-bone">
           Guess the song.
           <br />
           Beat your friends.
@@ -189,7 +189,7 @@ export function Profile({ stats, onBack }) {
     { k: "Correct", v: `${stats.correct} / ${stats.rounds} · ${acc}%` },
   ];
   return (
-    <div className="animate-rise space-y-6">
+    <div className="cascade space-y-6">
       <button type="button" onClick={onBack} className={`${EYEBROW} inline-flex min-h-11 items-center hover:text-amber`}>
         ‹ Home
       </button>

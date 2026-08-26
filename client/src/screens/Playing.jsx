@@ -198,6 +198,7 @@ function TimeCounter({ timeRemainingMs, round, total = 10 }) {
   const seconds = useCountdown(timeRemainingMs, round);
   const pct = Math.max(0, Math.min(100, (seconds / total) * 100));
   const low = seconds <= 3; // the only place red appears outside reveal
+  const warn = !low && seconds <= 6; // amber heats up before it turns red
   const mm = Math.floor(seconds / 60);
   const ss = String(seconds % 60).padStart(2, "0");
   return (
@@ -210,16 +211,17 @@ function TimeCounter({ timeRemainingMs, round, total = 10 }) {
           with the flicker (opacity) animation on the digits themselves. */}
       <div className={`mt-1 text-center ${low ? "animate-beat" : ""}`}>
         <span
-          className={`font-console text-7xl font-bold tabular-nums leading-none ${
+          className={`fs-display font-console font-bold tabular-nums ${
             low ? "phosphor-bad animate-flicker" : "phosphor"
           }`}
+          style={warn ? { color: "#FF8A3C", textShadow: "0 0 2px rgba(255,138,60,.7), 0 0 12px rgba(255,138,60,.45)" } : undefined}
         >
           {mm}:{ss}
         </span>
       </div>
       <div className="mt-4 h-1.5 w-full bg-rule">
         <div
-          className={`h-full transition-[width,background-color] duration-1000 ease-linear ${low ? "bg-bad" : "bg-amber"}`}
+          className={`h-full transition-[width,background-color] duration-1000 ease-linear ${low ? "bg-bad" : warn ? "bg-[#FF8A3C]" : "bg-amber"}`}
           style={{ width: `${pct}%` }}
         />
       </div>

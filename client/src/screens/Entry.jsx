@@ -19,7 +19,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumb
   const canPlay = identityName.length > 0;
 
   return (
-    <div className="mx-auto w-full max-w-sm animate-rise space-y-6">
+    <div className="mx-auto w-full max-w-sm cascade space-y-6">
       {onHome && (
         <button type="button" onClick={onHome} className={`${EYEBROW} inline-flex min-h-11 items-center hover:text-amber`}>
           ‹ Home

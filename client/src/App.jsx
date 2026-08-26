@@ -33,7 +33,7 @@ export default function App() {
     messages, reactions, roomCode, createRoom, joinRoom, quickPlay, start, guess, restart,
     sendChat, sendReaction, clearError, clearNotice, leaveRoom,
     daily, dailyStatus, dailyFinish, refreshDailyStatus, startDaily, answerDaily, leaveDaily,
-    xpAward, clearXpAward, dailyArchive, requestDailyArchive,
+    xpAward, clearXpAward, dailyArchive, requestDailyArchive, dailyGhost,
   } = useGameSocket();
 
   // A picked archive day rides the normal daily entry flow, then starts unranked.
@@ -397,6 +397,7 @@ export default function App() {
               spectator={isSpectator}
               onGuess={handleGuess}
               onReact={daily ? null : sendReaction}
+              ghost={daily && dailyGhost ? dailyGhost : null}
               audioRef={audioRef}
             />
           ) : phase === "ROUND_REVEAL" ? (

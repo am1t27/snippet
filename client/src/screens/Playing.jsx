@@ -17,7 +17,7 @@ const OPT_COLORS = [
 ];
 
 // ---------- Playing ----------
-export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGuess, onReact, audioRef }) {
+export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGuess, onReact, ghost, audioRef }) {
   const locked = hasGuessed || spectator; // spectators can't answer
   const startRef = useRef(() => {});
   const [needsTap, setNeedsTap] = useState(false);
@@ -124,6 +124,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
         timeRemainingMs={state.timeRemainingMs}
         round={state.round}
         total={roundSeconds}
+        ghost={ghost && ghost.perRound ? { name: ghost.name, mark: ghost.perRound[state.round - 1] || null } : null}
       />
 
       <Waveform audioRef={audioRef} />
@@ -197,9 +198,15 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
 // Owns the countdown itself rather than taking `seconds` as a prop: the timer
 // ticks 4x/sec, and if Playing held that state every tick would re-render the
 // whole round (all option buttons) instead of just this panel.
-function TimeCounter({ timeRemainingMs, round, total = 10 }) {
+function TimeCounter({ timeRemainingMs, round, total = 10, ghost = null }) {
   const seconds = useCountdown(timeRemainingMs, round);
   const pct = Math.max(0, Math.min(100, (seconds / total) * 100));
+  // Ghost race: where on this round's clock the current #1 answered. The bar
+  // drains right-to-left, so the ghost sits at (remaining when they answered).
+  const ghostMark = ghost && ghost.mark && ghost.mark.correct ? ghost.mark : null;
+  const ghostPct = ghostMark ? Math.max(0, 100 - (ghostMark.ms / (total * 1000)) * 100) : null;
+  const elapsedMs = (total - seconds) * 1000;
+  const ghostPassed = ghostMark ? elapsedMs >= ghostMark.ms : false;
   const low = seconds <= 3; // the only place red appears outside reveal
   const warn = !low && seconds <= 6; // amber heats up before it turns red
   const mm = Math.floor(seconds / 60);
@@ -222,12 +229,26 @@ function TimeCounter({ timeRemainingMs, round, total = 10 }) {
           {mm}:{ss}
         </span>
       </div>
-      <div className="mt-4 h-1.5 w-full bg-rule">
+      <div className="relative mt-4 h-1.5 w-full bg-rule">
         <div
           className={`h-full transition-[width,background-color] duration-1000 ease-linear ${low ? "bg-bad" : warn ? "bg-[#FF8A3C]" : "bg-amber"}`}
           style={{ width: `${pct}%` }}
         />
+        {ghostPct != null && (
+          <span
+            aria-hidden="true"
+            className={`absolute -top-[3px] h-3 w-[3px] bg-cyan shadow-[0_0_8px_#36D8FF] ${ghostPassed ? "animate-ghostblip" : ""}`}
+            style={{ left: `${ghostPct}%` }}
+          />
+        )}
       </div>
+      {ghostMark && (
+        <p className={`mt-2 text-center font-console text-[11px] uppercase tracking-[0.2em] ${ghostPassed ? "text-cyan" : "text-dim"}`}>
+          {ghostPassed
+            ? `${ghost.name} answered · beat them next round`
+            : `Racing ${ghost.name} · ${(ghostMark.ms / 1000).toFixed(1)}s`}
+        </p>
+      )}
     </div>
   );
 }

@@ -260,6 +260,28 @@ export async function getDailyDays(sub, limit = 60) {
   });
 }
 
+// Today's #1 result (name + per-round timings) for the ghost race. Timings
+// only ever describe rounds that are OVER for the leader; they reveal nothing
+// about answers.
+export async function getDailyLeaderAnswers(day) {
+  if (ready && pool) {
+    try {
+      const res = await pool.query(
+        "SELECT name, answers FROM daily_results WHERE day = $1 ORDER BY score DESC, created_at ASC LIMIT 1",
+        [day]
+      );
+      if (!res.rows[0]) return null;
+      return { name: res.rows[0].name, answers: res.rows[0].answers || [] };
+    } catch {
+      return null;
+    }
+  }
+  const bySub = memResults.get(day);
+  if (!bySub || bySub.size === 0) return null;
+  const top = [...bySub.values()].sort((a, b) => b.score - a.score || a.createdAt - b.createdAt)[0];
+  return { name: top.name, answers: top.answers || [] };
+}
+
 // Days this player completed, newest first, for streak derivation.
 export async function getDailyDaysPlayed(sub, sinceDays = 90) {
   if (ready && pool) {

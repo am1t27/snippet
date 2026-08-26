@@ -60,6 +60,7 @@ export function useGameSocket() {
   const [dailyFinish, setDailyFinish] = useState(null); // daily:finish payload (results screen)
   const [xpAward, setXpAward] = useState(null); // server xp award (verified) after a match
   const [dailyArchive, setDailyArchive] = useState(null); // daily:archive payload (past days)
+  const [dailyGhost, setDailyGhost] = useState(null); // today's #1 timings (ghost race)
   const seqRef = useRef(0); // monotonic id for stable React keys
 
   useEffect(() => {
@@ -158,6 +159,7 @@ export function useGameSocket() {
     // results screen payload. Round traffic reuses the live events above.
     socket.on("daily:status", (d) => setDailyStatus(d));
     socket.on("daily:archive", (a) => setDailyArchive(a && a.days ? a.days : []));
+    socket.on("daily:ghost", (g) => setDailyGhost(g));
     socket.on("daily:finish", (f) => {
       setDailyFinish(f);
       setDaily(false);
@@ -209,6 +211,7 @@ export function useGameSocket() {
   );
   const startDaily = useCallback((name, idToken, day) => {
     setDailyFinish(null);
+    setDailyGhost(null); // fresh race; server re-sends when there is a leader
     socketRef.current?.emit("daily:start", { name, idToken, day });
   }, []);
   const requestDailyArchive = useCallback((idToken) => {
@@ -219,6 +222,7 @@ export function useGameSocket() {
   const leaveDaily = useCallback(() => {
     socketRef.current?.emit("daily:leave");
     setDaily(false);
+    setDailyGhost(null);
     setDailyFinish(null);
     setState(null);
     setReveal(null);
@@ -276,6 +280,7 @@ export function useGameSocket() {
     clearXpAward,
     dailyArchive,
     requestDailyArchive,
+    dailyGhost,
     refreshDailyStatus,
     startDaily,
     answerDaily,

@@ -21,7 +21,7 @@ import {
 } from "./dailyLogic.js";
 import {
   saveDailyPuzzle, getDailyPuzzle, saveDailyResult, getDailyResult,
-  getDailyLeaderboard, getDailyRank, getDailyDaysPlayed, getDailyDays,
+  getDailyLeaderboard, getDailyRank, getDailyDaysPlayed, getDailyDays, getDailyLeaderAnswers,
 } from "./storage.js";
 import { addXp } from "./storage.js";
 import { awardFor } from "./xpLogic.js";
@@ -291,6 +291,19 @@ export function registerDaily(socket, { resolveIdentity, rateLimited }) {
         sub: id.sub || null, name: id.name, picture: id.picture || null,
       };
       sessions.set(socket.id, s);
+      // Ghost race: today's current #1 becomes the pace to beat. Timings only
+      // (correct + ms per finished round) — never an answer. Ranked runs only.
+      if (s.rankable) {
+        getDailyLeaderAnswers(day)
+          .then((leader) => {
+            if (!leader || !sessions.has(socket.id)) return;
+            socket.emit("daily:ghost", {
+              name: leader.name,
+              perRound: (leader.answers || []).map((a) => ({ correct: Boolean(a.correct), ms: Number(a.ms) || 0 })),
+            });
+          })
+          .catch(() => {});
+      }
       startRoundFor(socket, s);
     } finally {
       socket.data.busy = false;

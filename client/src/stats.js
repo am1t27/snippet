@@ -30,4 +30,32 @@ export function recordGame({ won, score, correct, rounds }) {
   return next;
 }
 
-export default { getStats, recordGame };
+// ----- Daily challenge (guest-local) -----
+// Server ranks only verified players; a guest's daily history lives here.
+const DAILY_KEY = "snippet.daily";
+const DAILY_EMPTY = { lastPlayedDay: null, streak: 0, lastScore: 0, lastPerRound: [] };
+
+export function getDailyLocal() {
+  try {
+    return { ...DAILY_EMPTY, ...(JSON.parse(localStorage.getItem(DAILY_KEY) || "{}")) };
+  } catch {
+    return { ...DAILY_EMPTY };
+  }
+}
+
+// day is the server's "YYYY-MM-DD" (UTC). Streak continues when the previous
+// play was exactly yesterday, restarts at 1 otherwise.
+export function recordDailyLocal({ day, score, perRound }) {
+  const prev = getDailyLocal();
+  const yesterday = new Date(Date.parse(day) - 86400000).toISOString().slice(0, 10);
+  const streak = prev.lastPlayedDay === yesterday ? prev.streak + 1 : prev.lastPlayedDay === day ? prev.streak : 1;
+  const next = { lastPlayedDay: day, streak, lastScore: score || 0, lastPerRound: perRound || [] };
+  try {
+    localStorage.setItem(DAILY_KEY, JSON.stringify(next));
+  } catch {
+    /* storage blocked */
+  }
+  return next;
+}
+
+export default { getStats, recordGame, getDailyLocal, recordDailyLocal };

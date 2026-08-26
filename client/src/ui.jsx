@@ -160,6 +160,7 @@ export function Chat({ messages, onChat, myId, title = "Chat" }) {
 
 // The 6 reaction call-outs. Tapping floats one over everyone's screen.
 export function ReactionBar({ onReact }) {
+  if (!onReact) return null; // solo daily: no one to react to
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
       {REACTION_TOKENS.map((t) => (

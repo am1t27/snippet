@@ -6,6 +6,7 @@ import { EYEBROW, PANEL } from "../ui";
 // "play" game routes into the room flow (some preset a clip mode); "soon" games
 // are placeholders. Glyphs are typographic marks, not emoji (§12).
 export const GAMES = [
+  { key: "daily", glyph: "■", title: "Daily", sub: "5 songs, one shot, every day", status: "play", clip: "RANDOM" },
   { key: "musicquiz", glyph: "♬", title: "Music Quiz", sub: "Name the track from a 10s snippet", status: "play", clip: "RANDOM" },
   { key: "heardle", glyph: "▶", title: "Heardle", sub: "Guess the song from its intro", status: "play", clip: "INTRO" },
   { key: "create", glyph: "+", title: "Create", sub: "Private room — challenge your friends", status: "play", clip: "RANDOM" },
@@ -16,7 +17,7 @@ export const GAMES = [
 ];
 
 // ---------- Home hub (landing) ----------
-export function Home({ games, stats, onOpen, onProfile }) {
+export function Home({ games, stats, onOpen, onProfile, dailyInfo }) {
   return (
     <div className="animate-rise space-y-10">
       <div className="space-y-3">
@@ -45,7 +46,7 @@ export function Home({ games, stats, onOpen, onProfile }) {
         <p className={EYEBROW}>Music games</p>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {games.map((g) => (
-            <GameCard key={g.key} game={g} onOpen={onOpen} />
+            <GameCard key={g.key} game={g} onOpen={onOpen} dailyInfo={g.key === "daily" ? dailyInfo : null} />
           ))}
         </div>
       </div>
@@ -57,8 +58,11 @@ export function Home({ games, stats, onOpen, onProfile }) {
   );
 }
 
-function GameCard({ game, onOpen }) {
+function GameCard({ game, onOpen, dailyInfo }) {
   const playable = game.status === "play";
+  // Daily card: show today's number and played/streak state when known.
+  const dailyTitle = dailyInfo && dailyInfo.number > 0 ? `${game.title} #${dailyInfo.number}` : game.title;
+  const dailySub = dailyInfo && dailyInfo.streak > 0 ? `${game.sub} · streak ${dailyInfo.streak}` : game.sub;
   return (
     <button type="button"
       onClick={() => playable && onOpen(game)}
@@ -72,15 +76,15 @@ function GameCard({ game, onOpen }) {
       </span>
       <span className="min-w-0">
         <span className="flex items-center gap-2">
-          <span className="font-console text-sm uppercase tracking-wide text-bone">{game.title}</span>
+          <span className="font-console text-sm uppercase tracking-wide text-bone">{dailyInfo ? dailyTitle : game.title}</span>
           {!playable && (
             <span className="font-console text-[11px] uppercase tracking-[0.2em] text-amber">Soon</span>
           )}
         </span>
-        <span className="mt-1 block font-console text-xs text-dim">{game.sub}</span>
+        <span className="mt-1 block font-console text-xs text-dim">{dailyInfo ? dailySub : game.sub}</span>
         {playable && (
           <span className="mt-2 inline-block font-console text-[11px] uppercase tracking-[0.2em] text-pink">
-            ▶ Play
+            {dailyInfo && dailyInfo.played ? "■ Played · back tomorrow" : "▶ Play"}
           </span>
         )}
       </span>

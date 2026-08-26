@@ -55,6 +55,9 @@ export function useGameSocket() {
   const [notice, setNotice] = useState(null); // transient bottom toast (player left, new host)
   const [messages, setMessages] = useState([]); // room chat log (capped)
   const [reactions, setReactions] = useState([]); // ephemeral floated call-outs
+  const [daily, setDaily] = useState(false); // a solo daily session is live
+  const [dailyStatus, setDailyStatus] = useState(null); // last daily:status payload
+  const [dailyFinish, setDailyFinish] = useState(null); // daily:finish payload (results screen)
   const seqRef = useRef(0); // monotonic id for stable React keys
 
   useEffect(() => {
@@ -93,6 +96,7 @@ export function useGameSocket() {
     socket.on("state", (s) => {
       setState(s);
       setLoading(null);
+      if (s && s.code === "DAILY") setDaily(true);
       if (s.phase === "ROUND_PLAYING") {
         setReveal(null);
         setCountdown(null);
@@ -145,6 +149,16 @@ export function useGameSocket() {
     // Game over: final leaderboard.
     socket.on("gameOver", (g) => setGameOver(g));
 
+    // Daily challenge (solo async). Status feeds the Home card; finish is the
+    // results screen payload. Round traffic reuses the live events above.
+    socket.on("daily:status", (d) => setDailyStatus(d));
+    socket.on("daily:finish", (f) => {
+      setDailyFinish(f);
+      setDaily(false);
+      setState(null);
+      setReveal(null);
+    });
+
     // Server is fetching songs (or otherwise busy).
     socket.on("loading", (l) => setLoading(l && l.message ? l : { message: "Loading…" }));
 
@@ -181,11 +195,33 @@ export function useGameSocket() {
   const restart = useCallback(() => socketRef.current?.emit("restart"), []);
   const sendChat = useCallback((text) => socketRef.current?.emit("chat", { text }), []);
   const sendReaction = useCallback((token) => socketRef.current?.emit("react", { token }), []);
+  // Daily challenge actions. answerDaily is the only guess path the daily
+  // accepts; the server times it from its own clock.
+  const refreshDailyStatus = useCallback(
+    (idToken) => socketRef.current?.emit("daily:status", idToken ? { idToken } : {}),
+    []
+  );
+  const startDaily = useCallback((name, idToken) => {
+    setDailyFinish(null);
+    socketRef.current?.emit("daily:start", { name, idToken });
+  }, []);
+  const answerDaily = useCallback((choice) => socketRef.current?.emit("daily:answer", { choice }), []);
+  const leaveDaily = useCallback(() => {
+    socketRef.current?.emit("daily:leave");
+    setDaily(false);
+    setDailyFinish(null);
+    setState(null);
+    setReveal(null);
+    setCountdown(null);
+    setRoundMeta(null);
+  }, []);
   const clearError = useCallback(() => setError(null), []);
   const clearNotice = useCallback(() => setNotice(null), []);
   const leaveRoom = useCallback(() => {
     clearSession();
     socketRef.current?.disconnect();
+    setDaily(false);
+    setDailyFinish(null);
     setRoomCode(null);
     setState(null);
     setReveal(null);
@@ -222,5 +258,12 @@ export function useGameSocket() {
     clearError,
     clearNotice,
     leaveRoom,
+    daily,
+    dailyStatus,
+    dailyFinish,
+    refreshDailyStatus,
+    startDaily,
+    answerDaily,
+    leaveDaily,
   };
 }

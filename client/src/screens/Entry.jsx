@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST } from "../ui";
 
 // ---------- Entry: sign in (Google or guest), create or join a room ----------
-export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
+export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumber }) {
+  const isDaily = mode === "daily";
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
   const [name, setName] = useState("");
   const [code, setCode] = useState(() => {
@@ -28,7 +29,9 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
         <p className="font-coin text-base leading-relaxed text-pink">INSERT COIN</p>
         <div className="mt-3 h-px w-24 bg-rule" />
         <p className="mt-4 font-console text-sm text-dim">
-          Sign in or play as a guest, then create or join a room.
+          {isDaily
+            ? "Sign in to get ranked on today's board, or play as a guest."
+            : "Sign in or play as a guest, then create or join a room."}
         </p>
       </div>
 
@@ -78,19 +81,26 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
         aria-describedby={!canPlay ? "handle-hint" : undefined}
         className={`${BTN_AMBER} w-full`}
       >
-        <span aria-hidden="true">▶ </span>Create Room
+        <span aria-hidden="true">▶ </span>
+        {isDaily ? `Play Daily${dailyNumber > 0 ? ` #${dailyNumber}` : ""}` : "Create Room"}
       </button>
 
-      <button type="button"
+      {isDaily && (
+        <p className="font-console text-xs leading-relaxed text-dim">
+          5 songs across the catalog. Same puzzle for everyone. One shot per day.
+        </p>
+      )}
+
+      {!isDaily && <button type="button"
         onClick={() => canPlay && onQuick(identityName, idToken)}
         disabled={!canPlay}
         aria-describedby={!canPlay ? "handle-hint" : undefined}
         className={`${BTN_GHOST} w-full`}
       >
         <span aria-hidden="true">▶ </span>Quick Play · public match
-      </button>
+      </button>}
 
-      <div>
+      {!isDaily && <div>
         <p className={EYEBROW}>or join with a code</p>
         <div className="mt-3 flex gap-2">
           <input
@@ -109,7 +119,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome }) {
             Join
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

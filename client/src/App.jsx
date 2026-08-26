@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useGameSocket } from "./useGameSocket";
 import sound from "./sound";
-import { getStats, recordGame } from "./stats";
+import { getStats, recordGame, getDailyLocal, recordDailyLocal } from "./stats";
 import {
   EYEBROW, Centered, ErrorBar, Toast, LoadingOverlay, CountdownOverlay, ReactionOverlay,
 } from "./ui";
@@ -21,12 +21,14 @@ import { Lobby } from "./screens/Lobby";
 import { Playing } from "./screens/Playing";
 import { Reveal } from "./screens/Reveal";
 import { GameOver } from "./screens/GameOver";
+import { DailyResults } from "./screens/DailyResults";
 
 export default function App() {
   const {
     connected, myId, state, reveal, gameOver, loading, error, roundMeta, countdown, notice,
     messages, reactions, roomCode, createRoom, joinRoom, quickPlay, start, guess, restart,
     sendChat, sendReaction, clearError, clearNotice, leaveRoom,
+    daily, dailyStatus, dailyFinish, refreshDailyStatus, startDaily, answerDaily, leaveDaily,
   } = useGameSocket();
 
   // --- Mobile audio unlock (priming) ---------------------------------------
@@ -114,6 +116,30 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [clipPref, setClipPref] = useState("RANDOM"); // preset by the Heardle card
   const [stats, setStats] = useState(() => getStats());
+  const [dailyLocal, setDailyLocal] = useState(() => getDailyLocal());
+
+  // Home card state: ask the server which day it is (and the board) on connect.
+  useEffect(() => {
+    if (connected) refreshDailyStatus();
+  }, [connected, refreshDailyStatus]);
+
+  // A finished daily: persist the guest-local streak once per finish payload.
+  useEffect(() => {
+    if (!dailyFinish) return;
+    setDailyLocal(recordDailyLocal({ day: dailyFinish.day, score: dailyFinish.score, perRound: dailyFinish.perRound }));
+    sound.play(dailyFinish.perRound.filter(Boolean).length >= 3 ? "win" : "lose");
+  }, [dailyFinish]);
+
+  // What the Home card shows: server day/number + played state from either the
+  // server (verified) or this device (guest).
+  const dailyInfo = {
+    number: dailyStatus ? dailyStatus.number : 0,
+    played: Boolean(
+      (dailyStatus && dailyStatus.played) ||
+        (dailyStatus && dailyLocal.lastPlayedDay === dailyStatus.day)
+    ),
+    streak: dailyStatus && dailyStatus.streak != null ? dailyStatus.streak : dailyLocal.streak,
+  };
 
   // Count my correct answers across the game so the profile can track accuracy.
   const myCorrectRef = useRef(0);
@@ -152,8 +178,18 @@ export default function App() {
       leaveRoom();
     }
     setClipPref(game.clip || "RANDOM");
-    setView("play");
+    setView(game.key === "daily" ? "daily" : "play");
     setMenuOpen(false);
+  };
+
+  const handleStartDaily = (name, idToken) => {
+    primeAudio();
+    startDaily(name, idToken);
+  };
+  const handleDailyHome = () => {
+    leaveDaily();
+    refreshDailyStatus();
+    setView("home");
   };
 
   // Reveal: play correct/wrong sting and announce my result.
@@ -207,7 +243,8 @@ export default function App() {
   const handleGuess = (opt) => {
     sound.play("select");
     setMyGuess(opt);
-    guess(opt);
+    if (daily) answerDaily(opt);
+    else guess(opt);
   };
 
   return (
@@ -261,8 +298,17 @@ export default function App() {
         <main className="flex flex-1 flex-col justify-start py-8">
           {!connected && !joined ? (
             <Centered eyebrow="Status" title="Connecting…" />
+          ) : dailyFinish ? (
+            <DailyResults finish={dailyFinish} localStreak={dailyLocal.streak} onHome={handleDailyHome} />
+          ) : !joined && view === "daily" ? (
+            <EntryScreen
+              mode="daily"
+              dailyNumber={dailyInfo.number}
+              onCreate={handleStartDaily}
+              onHome={() => setView("home")}
+            />
           ) : !joined && view === "home" ? (
-            <Home games={GAMES} stats={stats} onOpen={openGame} onProfile={() => setView("profile")} />
+            <Home games={GAMES} stats={stats} onOpen={openGame} onProfile={() => setView("profile")} dailyInfo={dailyInfo} />
           ) : !joined && view === "profile" ? (
             <Profile stats={stats} onBack={() => setView("home")} />
           ) : !joined ? (
@@ -293,12 +339,12 @@ export default function App() {
               hasGuessed={Boolean(myGuess) || Boolean(me?.hasGuessed)}
               spectator={isSpectator}
               onGuess={handleGuess}
-              onReact={sendReaction}
+              onReact={daily ? null : sendReaction}
               audioRef={audioRef}
             />
           ) : phase === "ROUND_REVEAL" ? (
             reveal ? (
-              <Reveal reveal={reveal} myId={myId} onReact={sendReaction} players={players} />
+              <Reveal reveal={reveal} myId={myId} onReact={daily ? null : sendReaction} players={players} />
             ) : (
               <Centered eyebrow="Status" title="Catching up…" />
             )

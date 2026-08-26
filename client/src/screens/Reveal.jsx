@@ -38,7 +38,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
 
       {track && (
         <div
-          className={`panel-lux animate-rise flex items-center gap-4 px-5 py-4 ${cardMood}`}
+          className={`${PANEL} animate-rise flex items-center gap-4 px-5 py-4 ${cardMood}`}
           style={{ animationDelay: "80ms" }}
         >
           {/* Album artwork; glyph tile until the catalog's next ingest fills it. */}
@@ -69,7 +69,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
       {/* Winner card: HIGH SCORE, amber left accent, big points */}
       {winner ? (
         <div
-          className="animate-rise border border-amber/40 border-l-4 border-l-amber bg-amber/5 px-5 py-5 shadow-[0_0_30px_-10px_#FFC93C]"
+          className="animate-rise border border-amber/40 border-l-4 border-l-amber bg-amber/5 px-5 py-5"
           style={{ animationDelay: "160ms" }}
         >
           <p className="font-coin text-xs text-amber">HIGH SCORE</p>
@@ -92,7 +92,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
         </div>
       ) : (
         <div
-          className="animate-rise border border-bad/50 bg-bad/5 px-5 py-6 text-center shadow-[0_0_30px_-10px_#FF4D6D]"
+          className="animate-rise border border-bad/50 border-l-4 border-l-bad bg-bad/5 px-5 py-6 text-center"
           style={{ animationDelay: "160ms" }}
         >
           <p className="font-marquee text-2xl font-black uppercase tracking-tight text-bad">

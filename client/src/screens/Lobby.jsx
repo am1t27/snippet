@@ -1,7 +1,6 @@
 // Lobby: player list, room code, host settings, chat.
 import { useState } from "react";
 import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST, Avatar, Chat } from "../ui";
-import { ParticleButton } from "../fx/interact";
 
 // Genre options the host can pick before starting. Values mirror the server's
 // catalog/genres.js registry (its GENRE_KEYS allowlist) — the server
@@ -157,9 +156,9 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
           <SettingRow label="Answers" options={OPTION_OPTS} value={settings.optionsCount} onChange={setField("optionsCount")} />
           <SettingRow label="Era" options={DECADE_OPTS} value={settings.decade} onChange={setField("decade")} />
 
-          <ParticleButton onClick={handleStart} className={`${BTN_AMBER} w-full`}>
+          <button type="button" onClick={handleStart} className={`${BTN_AMBER} w-full`}>
             <span aria-hidden="true">▶ </span>Start Game
-          </ParticleButton>
+          </button>
         </div>
       ) : (
         <p className={`${EYEBROW} text-center`}>

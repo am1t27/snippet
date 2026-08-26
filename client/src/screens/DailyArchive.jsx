@@ -29,7 +29,7 @@ export function DailyArchive({ days, onPlay, onBack }) {
               <button
                 type="button"
                 onClick={() => onPlay(d.day)}
-                className={`${PANEL} flex w-full items-center justify-between px-4 py-3 text-left transition-[border-color,transform] duration-150 ease-spring hover:-translate-y-0.5 hover:border-pink active:scale-[.97]`}
+                className={`${PANEL} flex w-full items-center justify-between px-4 py-3 text-left transition-[border-color] hover:border-pink active:scale-[.98]`}
               >
                 <span className="min-w-0">
                   <span className="font-console text-sm uppercase tracking-wide text-bone">Daily #{d.number}</span>

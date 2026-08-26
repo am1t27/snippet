@@ -15,7 +15,7 @@ export function LevelUp({ award, onClose }) {
       aria-modal="true"
       aria-label={`Level up. You are now level ${award.level}, rank ${award.rank}.`}
     >
-      <div className="fx-neon-border animate-levelup w-full max-w-xs shadow-[0_0_60px_-12px_#FFC93C]">
+      <div className="animate-levelup w-full max-w-xs border-2 border-amber bg-cabinet">
       <div className="relative px-6 py-8 text-center">
         <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2">
           {VECTORS.map(([x, y], i) => (

@@ -112,15 +112,6 @@ export default {
         ghostblip: "ghostblip 500ms ease-out both",
         levelup: "levelup 600ms cubic-bezier(.34,1.56,.64,1) both",
       },
-      boxShadow: {
-        // Neon lifts for the springy hover state, one per accent.
-        "lift-pink": "0 6px 28px -8px rgba(255,61,127,0.55)",
-        "lift-amber": "0 6px 28px -8px rgba(255,201,60,0.5)",
-      },
-      transitionTimingFunction: {
-        // Springy overshoot for button lifts and pops.
-        spring: "cubic-bezier(.34,1.56,.64,1)",
-      },
     },
   },
   plugins: [],

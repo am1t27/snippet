@@ -1,8 +1,7 @@
 // Home hub, profile, and side menu — landing surfaces outside a room.
 import { useEffect, useRef, useState } from "react";
 import { EYEBROW, PANEL } from "../ui";
-import { BlinkingSquares } from "../fx/BlinkingSquares";
-import { RetroGrid, GenreMarquee, Reveal } from "../fx/atmosphere";
+import { GenreMarquee } from "../fx/atmosphere";
 import { ScrambleText } from "../fx/text";
 
 // The music-games catalog shown on the Home hub and in the side menu. Each
@@ -23,9 +22,7 @@ export const GAMES = [
 export function Home({ games, stats, onOpen, onProfile, dailyInfo }) {
   return (
     <div className="cascade space-y-10">
-      <div className="glow-wash relative space-y-3 py-2 pb-10">
-        <RetroGrid className="-z-20 opacity-80" />
-        <BlinkingSquares className="-z-10 opacity-55" />
+      <div className="glow-wash relative space-y-3 py-2 pb-8">
         <p className="font-coin text-sm leading-relaxed text-pink">INSERT COIN</p>
         <h2 className="fs-display font-marquee font-black uppercase text-bone">
           <ScrambleText text="Guess the song." durationMs={800} />
@@ -43,7 +40,7 @@ export function Home({ games, stats, onOpen, onProfile, dailyInfo }) {
 
       <button type="button"
         onClick={onProfile}
-        className={`${PANEL} fx-spot flex w-full items-center justify-between px-4 py-3 text-left transition-[border-color,transform] hover:border-amber/60 active:scale-[.96]`}
+        className={`${PANEL} flex w-full items-center justify-between px-4 py-3 text-left transition-[border-color] hover:border-amber/60 active:scale-[.98]`}
       >
         <span className={EYEBROW}>Your profile</span>
         <span className="font-console text-xs tabular-nums text-dim">
@@ -62,7 +59,7 @@ export function Home({ games, stats, onOpen, onProfile, dailyInfo }) {
 
       <WhySnippet />
       <Faq />
-      <SiteFooter />
+      <SiteFooter dailyInfo={dailyInfo} />
     </div>
   );
 }
@@ -76,8 +73,8 @@ function GameCard({ game, onOpen, dailyInfo }) {
     <button type="button"
       onClick={() => playable && onOpen(game)}
       disabled={!playable}
-      className={`${PANEL} fx-spot flex items-start gap-3 px-4 py-4 text-left transition-[border-color,transform] ${
-        playable ? "hover:border-pink enabled:active:scale-[.96]" : "opacity-60"
+      className={`${PANEL} flex items-start gap-3 px-4 py-4 text-left transition-[border-color] ${
+        playable ? "hover:border-pink enabled:active:scale-[.98]" : "opacity-60"
       }`}
     >
       <span className="grid h-9 w-9 shrink-0 place-items-center border border-rule bg-void font-marquee text-lg text-pink">
@@ -108,19 +105,21 @@ const WHY_ITEMS = [
   { t: "Completely free", d: "No downloads, no account needed. Just open and play." },
 ];
 
+// Ruled ledger, not a card grid: term on the left, definition on the right.
+// The thin rules do the structural work; nothing is boxed.
 function WhySnippet() {
   return (
-    <Reveal>
+    <div>
       <p className={EYEBROW}>Why Snippet</p>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <dl className="mt-3 border-t border-rule">
         {WHY_ITEMS.map((i) => (
-          <div key={i.t} className={`${PANEL} fx-spot px-4 py-3`}>
-            <p className="font-console text-sm uppercase tracking-wide text-bone">{i.t}</p>
-            <p className="mt-1 font-console text-xs leading-relaxed text-dim">{i.d}</p>
+          <div key={i.t} className="grid grid-cols-1 gap-1 border-b border-rule/60 py-3 sm:grid-cols-[11rem_1fr] sm:gap-4">
+            <dt className="font-console text-xs uppercase tracking-[0.15em] text-bone">{i.t}</dt>
+            <dd className="font-console text-xs leading-relaxed text-dim">{i.d}</dd>
           </div>
         ))}
-      </div>
-    </Reveal>
+      </dl>
+    </div>
   );
 }
 
@@ -143,45 +142,79 @@ const FAQ_ITEMS = [
   },
 ];
 
+// Same ruled language as WhySnippet — rows on hairlines, no boxes.
 function Faq() {
   const [open, setOpen] = useState(-1);
   return (
-    <Reveal>
+    <div>
       <p className={EYEBROW}>Popular questions</p>
-      <div className="mt-3 space-y-2">
+      <div className="mt-3 border-t border-rule">
         {FAQ_ITEMS.map((f, i) => {
           const isOpen = open === i;
           return (
-            <div key={i} className={PANEL}>
+            <div key={i} className="border-b border-rule/60">
               <button type="button"
                 onClick={() => setOpen(isOpen ? -1 : i)}
                 aria-expanded={isOpen}
                 aria-controls={`faq-answer-${i}`}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-transform active:scale-[.96]"
+                className="flex w-full items-center justify-between gap-3 py-3 text-left"
               >
-                <span className="font-console text-xs uppercase tracking-wide text-bone">{f.q}</span>
+                <span className={`font-console text-xs uppercase tracking-wide transition-colors ${isOpen ? "text-amber" : "text-bone"}`}>{f.q}</span>
                 <span className="shrink-0 font-console text-amber" aria-hidden="true">{isOpen ? "−" : "+"}</span>
               </button>
               {isOpen && (
-                <p id={`faq-answer-${i}`} className="border-t border-rule px-4 py-3 font-console text-xs leading-relaxed text-dim">{f.a}</p>
+                <p id={`faq-answer-${i}`} className="pb-4 pr-8 font-console text-xs leading-relaxed text-dim">{f.a}</p>
               )}
             </div>
           );
         })}
       </div>
-    </Reveal>
+    </div>
   );
 }
 
-function SiteFooter() {
+// Live catalog size for the footer readout. Session-cached; renders nothing
+// until the real number arrives — no invented figures.
+function useCatalogTotal() {
+  const [total, setTotal] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    try {
+      const cached = sessionStorage.getItem("snippet.catalogTotal");
+      if (cached) setTotal(Number(cached));
+    } catch { /* private mode */ }
+    const base = import.meta.env.VITE_SOCKET_URL || window.location.origin;
+    fetch(`${base}/catalog/stats`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive || !d || typeof d.total !== "number") return;
+        setTotal(d.total);
+        try { sessionStorage.setItem("snippet.catalogTotal", String(d.total)); } catch { /* ignore */ }
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  return total;
+}
+
+// Footer in the same register as the app's status bar: one hairline, tiny
+// letterspaced mono, and a readout of true numbers (live catalog size, today's
+// puzzle number). Atmosphere through precision, not decoration.
+function SiteFooter({ dailyInfo }) {
+  const total = useCatalogTotal();
+  const facts = [
+    total != null ? `${total.toLocaleString("en-US")} tracks` : null,
+    dailyInfo && dailyInfo.number > 0 ? `daily #${dailyInfo.number}` : null,
+    "free",
+  ].filter(Boolean);
   return (
-    <footer className="border-t border-rule pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="font-marquee text-lg font-black uppercase tracking-tight text-bone">Snippet</span>
-        <span className={EYEBROW}>Free music guessing games</span>
+    <footer className="border-t border-rule pt-5 pb-2">
+      <div className={`${EYEBROW} flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2`}>
+        <span className="text-bone">Snippet</span>
+        <span className="tabular-nums">{facts.join(" · ")}</span>
       </div>
-      <p className="mt-3 font-console text-xs leading-relaxed text-dim">
-        Preview clips via the iTunes Search API. Made for fun — not affiliated with Apple.
+      <p className="mt-4 font-console text-[11px] leading-relaxed text-dim/80">
+        Preview clips via the iTunes Search API. Not affiliated with Apple.
       </p>
     </footer>
   );
@@ -208,14 +241,14 @@ export function Profile({ stats, xp, onBack }) {
       </div>
 
       {xp && (
-        <div className="panel-lux px-4 py-4">
+        <div className={`${PANEL} border-l-2 border-l-amber px-4 py-4`}>
           <div className="flex items-baseline justify-between">
             <span className="font-coin text-xs text-amber">{xp.rank}</span>
             <span className={EYEBROW}>Level {xp.level}</span>
           </div>
           <div className="mt-3 h-1.5 w-full bg-rule" role="progressbar" aria-valuenow={xp.into} aria-valuemin={0} aria-valuemax={xp.needed} aria-label={`XP progress: ${xp.into} of ${xp.needed}`}>
             <div
-              className="h-full bg-amber shadow-[0_0_10px_#FFC93C] transition-[width] duration-700"
+              className="h-full bg-amber transition-[width] duration-700"
               style={{ width: `${Math.min(100, Math.round((xp.into / xp.needed) * 100))}%` }}
             />
           </div>
@@ -306,7 +339,7 @@ export function SideMenu({ games, onClose, onHome, onOpen, onProfile }) {
     <div className="fixed inset-0 z-[70] flex" role="dialog" aria-modal="true" aria-label="Menu">
       <nav
         ref={panelRef}
-        className="animate-rise w-72 max-w-[80vw] overflow-y-auto border-r border-rule bg-cabinet/80 px-5 py-6 backdrop-blur-md"
+        className="animate-rise w-72 max-w-[80vw] overflow-y-auto border-r border-rule bg-cabinet px-5 py-6"
       >
         <div className="flex items-center justify-between">
           <span className="font-marquee text-xl font-black uppercase tracking-tight text-bone">Snippet</span>
@@ -357,7 +390,7 @@ export function SideMenu({ games, onClose, onHome, onOpen, onProfile }) {
           Share the game with friends for even more fun.
         </p>
       </nav>
-      <button type="button" aria-label="Close menu" onClick={onClose} className="flex-1 bg-void/70 backdrop-blur-sm" />
+      <button type="button" aria-label="Close menu" onClick={onClose} className="flex-1 bg-void/70" />
     </div>
   );
 }

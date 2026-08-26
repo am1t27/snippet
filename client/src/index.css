@@ -51,8 +51,6 @@ body {
   box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.45);
 }
 
-/* ----- Refined-arcade elevation ----- */
-
 /* Fluid display numerals/headlines: the one oversized voice on each screen. */
 .fs-display {
   font-size: clamp(2.5rem, 8vw, 4.5rem);
@@ -60,8 +58,8 @@ body {
   line-height: 0.95;
 }
 
-/* Radial glow wash behind a screen's hero block. Accent via --wash (defaults
-   pink). Sits behind content; purely atmospheric. */
+/* Barely-there radial light behind a screen's hero block. Accent via --wash
+   (defaults pink). Static, localized; reads as cabinet glow, not decoration. */
 .glow-wash {
   position: relative;
   isolation: isolate;
@@ -72,16 +70,7 @@ body {
   inset: -40px -60px;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(60% 70% at 30% 20%, var(--wash, rgba(255, 61, 127, 0.14)), transparent 70%);
-}
-
-/* Gradient hairline border: a panel that catches light on one edge. Works by
-   painting the border area with a gradient under the panel fill. */
-.panel-lux {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(#1b1b2a, #1b1b2a) padding-box,
-    linear-gradient(135deg, rgba(255, 61, 127, 0.45), rgba(46, 46, 68, 0.9) 38%, rgba(54, 216, 255, 0.35)) border-box;
+  background: radial-gradient(60% 70% at 30% 20%, var(--wash, rgba(255, 61, 127, 0.1)), transparent 70%);
 }
 
 /* Film grain: two offset dot grids at 2% — texture without an image asset. */
@@ -92,102 +81,8 @@ body {
   background-position: 0 0, 4px 7px;
 }
 
-/* ----- Atmosphere layer (MagicUI / Aceternity-inspired, CSS-only ports) ----- */
-
-/* Ambient aurora: two huge blurred color fields drifting behind everything.
-   Kills the empty-black feeling app-wide at ~5% alpha; content never fights
-   it. Fixed + no pointer events; GPU-cheap (transform-only animation). */
-.fx-aurora {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
-.fx-aurora::before,
-.fx-aurora::after {
-  content: "";
-  position: absolute;
-  width: 70vmax;
-  height: 70vmax;
-  border-radius: 50%;
-  filter: blur(90px);
-  will-change: transform;
-}
-.fx-aurora::before {
-  left: -25vmax;
-  top: -30vmax;
-  background: radial-gradient(closest-side, rgba(255, 61, 127, 0.1), transparent 70%);
-  animation: fx-aurora-a 26s ease-in-out infinite alternate;
-}
-.fx-aurora::after {
-  right: -30vmax;
-  bottom: -35vmax;
-  background: radial-gradient(closest-side, rgba(54, 216, 255, 0.08), transparent 70%);
-  animation: fx-aurora-b 32s ease-in-out infinite alternate;
-}
-@keyframes fx-aurora-a {
-  from { transform: translate(0, 0) scale(1); }
-  to { transform: translate(12vmax, 8vmax) scale(1.15); }
-}
-@keyframes fx-aurora-b {
-  from { transform: translate(0, 0) scale(1.1); }
-  to { transform: translate(-10vmax, -6vmax) scale(0.95); }
-}
-
-/* Retro grid floor (MagicUI `retro-grid`, classic CSS port): a perspective
-   plane of scrolling neon gridlines, faded at the horizon. */
-.fx-retro-grid {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  perspective: 200px;
-  -webkit-mask-image: linear-gradient(to top, black 30%, transparent 85%);
-  mask-image: linear-gradient(to top, black 30%, transparent 85%);
-}
-.fx-retro-grid::before {
-  content: "";
-  position: absolute;
-  inset: -100% -50%;
-  transform: rotateX(55deg);
-  background-image:
-    linear-gradient(to right, rgba(255, 61, 127, 0.28) 1px, transparent 0),
-    linear-gradient(to bottom, rgba(255, 61, 127, 0.28) 1px, transparent 0);
-  background-size: 44px 44px;
-  animation: fx-grid-scroll 1.6s linear infinite;
-}
-@keyframes fx-grid-scroll {
-  from { background-position: 0 0, 0 0; }
-  to { background-position: 0 44px, 0 44px; }
-}
-
-/* Spotlight cards (MagicUI `magic-card` / Aceternity card-spotlight port):
-   a pointer-tracked radial highlight. --mx/--my are written by a delegated
-   listener in App; only elements with .fx-spot get the overlay. */
-@media (pointer: fine) {
-  .fx-spot {
-    position: relative;
-  }
-  .fx-spot::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 260ms ease;
-    background: radial-gradient(
-      220px circle at var(--mx, 50%) var(--my, 50%),
-      rgba(255, 201, 60, 0.09),
-      transparent 65%
-    );
-  }
-  .fx-spot:hover::after {
-    opacity: 1;
-  }
-}
-
-/* Marquee (MagicUI `marquee`): duplicated track scrolling forever. */
+/* Genre marquee: duplicated track scrolling forever, faded at both ends.
+   Slow enough to read as a readout, not an animation. */
 .fx-marquee {
   display: flex;
   gap: 2.5rem;
@@ -201,53 +96,16 @@ body {
   gap: 2.5rem;
   min-width: 100%;
   justify-content: space-around;
-  animation: fx-marquee-scroll 28s linear infinite;
+  animation: fx-marquee-scroll 36s linear infinite;
 }
 @keyframes fx-marquee-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(calc(-100% - 2.5rem)); }
 }
 
-/* Shimmer sweep (MagicUI `shimmer-button`): a light band crosses the primary
-   CTA every few seconds. Applied via .fx-shimmer on the existing buttons. */
-.fx-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-.fx-shimmer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 40%;
-  left: -60%;
-  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.35), transparent);
-  animation: fx-shimmer-sweep 3.6s ease-in-out infinite;
-}
-@keyframes fx-shimmer-sweep {
-  0%, 55% { left: -60%; }
-  85%, 100% { left: 120%; }
-}
-
-/* Scroll reveal: sections below the fold rise in when they enter the
-   viewport (IntersectionObserver adds .is-in). */
-.fx-reveal {
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 480ms cubic-bezier(0.16, 1, 0.3, 1), transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.fx-reveal.is-in {
-  opacity: 1;
-  transform: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .fx-reveal { opacity: 1; transform: none; transition: none; }
-}
-
-/* ----- Catalog effects (Originkit / KokonutUI ports) ----- */
-
-/* GlitchText (KokonutUI): pink/cyan clone layers jitter behind the real text.
-   data-text feeds the clones; clip-path slices give the broken-signal look. */
+/* GlitchText: pink/cyan clone layers jitter behind the real text. Reserved
+   for one state — a round nobody solved (signal lost). data-text feeds the
+   clones; clip-path slices give the broken-signal look. */
 .fx-glitch::before,
 .fx-glitch::after {
   content: attr(data-text);
@@ -274,58 +132,6 @@ body {
   93% { transform: translate(3px, -1px); opacity: 0.8; clip-path: inset(50% 0 20% 0); }
   95% { transform: translate(-2px, 1px); opacity: 0.8; clip-path: inset(15% 0 65% 0); }
   97% { transform: translate(2px, 0); opacity: 0.8; clip-path: inset(70% 0 5% 0); }
-}
-
-/* NeonBorder (Originkit): a slow conic sweep of light around a card's edge.
-   Wrap the card; ::before paints the traveling gradient in the 1px gutter. */
-.fx-neon-border {
-  position: relative;
-  padding: 1px;
-  overflow: hidden;
-}
-.fx-neon-border::before {
-  content: "";
-  position: absolute;
-  inset: -60%;
-  background: conic-gradient(
-    from var(--fx-angle, 0deg),
-    transparent 0deg,
-    #ffc93c 40deg,
-    #ff3d7f 80deg,
-    transparent 140deg,
-    transparent 360deg
-  );
-  animation: fx-border-spin 3.2s linear infinite;
-}
-.fx-neon-border > * {
-  position: relative;
-  background: #1b1b2a;
-}
-@property --fx-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-@keyframes fx-border-spin {
-  to { --fx-angle: 360deg; }
-}
-/* Fallback rotation for browsers without @property (the sweep still moves). */
-@supports not (background: conic-gradient(from var(--fx-angle, 0deg), red, blue)) {
-  .fx-neon-border::before { animation: spin 3.2s linear infinite; }
-}
-
-/* ClickFX (Originkit sniper): four ticks fly outward from the click point. */
-.fx-ping {
-  width: 2px;
-  height: 8px;
-  left: -1px;
-  top: -22px;
-  transform-origin: 1px 22px;
-  animation: fx-ping-fly 380ms cubic-bezier(0.2, 0, 0, 1) both;
-}
-@keyframes fx-ping-fly {
-  0% { translate: 0 8px; opacity: 1; }
-  100% { translate: 0 -10px; opacity: 0; }
 }
 
 /* Screen-entrance choreography: direct children rise in a 40ms cascade.

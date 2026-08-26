@@ -18,6 +18,14 @@ snippet, pick the right track from four options — faster answers score more.
 - **Audio**: 30s iTunes previews, played from a random offset, stopped after 10s
   client-side.
 
+## Daily challenge
+
+One frozen 5-song puzzle per UTC day (mixed genres), playable solo by anyone.
+Guests keep a local streak; Google-verified players get one ranked run per day
+on a global per-day leaderboard (first completion wins, timed by the server
+clock). Puzzle rows and results persist in Postgres when DATABASE_URL is set;
+without it the puzzle lives in memory per boot and nothing is ranked.
+
 ## Run it
 ```bash
 # 1. game server (port 3000)

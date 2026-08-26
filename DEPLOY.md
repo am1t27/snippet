@@ -63,7 +63,11 @@ Snippet has **two deployable parts** that must go to **two different kinds of ho
    has to change. Render's free Postgres is deleted after its trial window — if
    that happens the server logs a warning and falls back to the JSON snapshot,
    it does not go down.
-4. Note the public URL, e.g. `https://snippet-server.up.railway.app`.
+4. **Daily challenge**: needs no extra setup. With `DATABASE_URL` set, the
+   day's puzzle and verified players' results persist across restarts and the
+   global daily leaderboard works. Without it the mode still plays (guest-style)
+   but the puzzle regenerates on every boot and nobody is ranked.
+5. Note the public URL, e.g. `https://snippet-server.up.railway.app`.
 
 ## 2. Client → Vercel
 

@@ -93,3 +93,34 @@ describe("shareText", () => {
     expect(/[\u{1F300}-\u{1FAFF}]/u.test(t)).toBe(false);
   });
 });
+
+// ----- Task 2: daily storage (memory fallback; no DATABASE_URL in vitest) -----
+import {
+  saveDailyPuzzle, getDailyPuzzle, saveDailyResult, getDailyResult,
+  getDailyLeaderboard, getDailyRank, getDailyDaysPlayed,
+} from "../storage.js";
+
+describe("daily storage (memory fallback)", () => {
+  const rounds = [{ trackId: "1", options: ["a", "b"], correct: "a", audioUrl: "u", artistName: "x", trackName: "a" }];
+  it("first save wins and re-save returns the frozen puzzle", async () => {
+    const won = await saveDailyPuzzle("2099-01-01", rounds);
+    expect(won).toEqual(rounds);
+    const again = await saveDailyPuzzle("2099-01-01", [{ trackId: "2" }]);
+    expect(again).toEqual(rounds); // frozen
+    expect(await getDailyPuzzle("2099-01-01")).toEqual(rounds);
+    expect(await getDailyPuzzle("2098-12-31")).toBeNull();
+  });
+  it("one result per (day, sub); leaderboard ranks by score", async () => {
+    expect(await saveDailyResult({ day: "2099-01-02", sub: "s1", name: "A", score: 900, answers: [] })).toBe(true);
+    expect(await saveDailyResult({ day: "2099-01-02", sub: "s1", name: "A", score: 9999, answers: [] })).toBe(false);
+    await saveDailyResult({ day: "2099-01-02", sub: "s2", name: "B", score: 1200, answers: [] });
+    const lb = await getDailyLeaderboard("2099-01-02");
+    expect(lb[0]).toMatchObject({ name: "B", score: 1200, rank: 1 });
+    expect(lb[1]).toMatchObject({ name: "A", score: 900, rank: 2 });
+    expect(await getDailyRank("2099-01-02", "s1")).toBe(2);
+    expect(await getDailyRank("2099-01-02", "nobody")).toBeNull();
+    expect((await getDailyResult("2099-01-02", "s1")).score).toBe(900);
+    expect(await getDailyResult("2099-01-02", "zz")).toBeNull();
+    expect(await getDailyDaysPlayed("s1")).toContain("2099-01-02");
+  });
+});

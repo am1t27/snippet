@@ -27,6 +27,23 @@ export async function initStorage(log) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS daily_puzzles (
+        day DATE PRIMARY KEY,
+        tracks JSONB NOT NULL
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS daily_results (
+        day DATE NOT NULL,
+        sub TEXT NOT NULL,
+        name TEXT NOT NULL,
+        score INTEGER NOT NULL,
+        answers JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (day, sub)
+      );
+    `);
     ready = true;
     log?.info?.("postgres storage ready (global leaderboard enabled)");
     return true;
@@ -70,6 +87,151 @@ export async function topScores(limit = 20) {
   } catch {
     return [];
   }
+}
+
+// ----- Daily challenge persistence -----
+//
+// Same philosophy as the rest of this file: Postgres when DATABASE_URL is up,
+// an in-process memory fallback otherwise, and every pg failure degrades to
+// the memory path instead of breaking play. In memory mode puzzles and
+// results last until the process restarts, which is the accepted degraded
+// mode for a single-instance no-DB deploy (guests are unaffected: their
+// streaks live in their own browser).
+
+const memPuzzles = new Map(); // day -> rounds[]
+const memResults = new Map(); // day -> Map(sub -> { name, score, answers, createdAt })
+
+// pg returns DATE columns as JS Date objects; normalize to "YYYY-MM-DD".
+function toDayString(v) {
+  return v instanceof Date ? v.toISOString().slice(0, 10) : String(v);
+}
+
+// First writer freezes the day. Returns the winning (frozen) puzzle either way.
+export async function saveDailyPuzzle(day, rounds) {
+  if (ready && pool) {
+    try {
+      await pool.query(
+        "INSERT INTO daily_puzzles(day, tracks) VALUES($1, $2) ON CONFLICT (day) DO NOTHING",
+        [day, JSON.stringify(rounds)]
+      );
+      const res = await pool.query("SELECT tracks FROM daily_puzzles WHERE day = $1", [day]);
+      if (res.rows[0]) return res.rows[0].tracks;
+    } catch {
+      /* fall through to memory */
+    }
+  }
+  if (!memPuzzles.has(day)) memPuzzles.set(day, rounds);
+  return memPuzzles.get(day);
+}
+
+export async function getDailyPuzzle(day) {
+  if (ready && pool) {
+    try {
+      const res = await pool.query("SELECT tracks FROM daily_puzzles WHERE day = $1", [day]);
+      if (res.rows[0]) return res.rows[0].tracks;
+      return memPuzzles.get(day) ?? null;
+    } catch {
+      /* fall through to memory */
+    }
+  }
+  return memPuzzles.get(day) ?? null;
+}
+
+// One row per (day, sub); the FIRST completion wins. Returns false when the
+// player already has a result for that day.
+export async function saveDailyResult({ day, sub, name, score, answers }) {
+  if (ready && pool) {
+    try {
+      const res = await pool.query(
+        "INSERT INTO daily_results(day, sub, name, score, answers) VALUES($1,$2,$3,$4,$5) ON CONFLICT (day, sub) DO NOTHING",
+        [day, sub, name, score, JSON.stringify(answers)]
+      );
+      return res.rowCount === 1;
+    } catch {
+      /* fall through to memory */
+    }
+  }
+  if (!memResults.has(day)) memResults.set(day, new Map());
+  const bySub = memResults.get(day);
+  if (bySub.has(sub)) return false;
+  bySub.set(sub, { name, score, answers, createdAt: Date.now() });
+  return true;
+}
+
+export async function getDailyResult(day, sub) {
+  if (ready && pool) {
+    try {
+      const res = await pool.query("SELECT score, answers FROM daily_results WHERE day = $1 AND sub = $2", [day, sub]);
+      if (res.rows[0]) return { score: Number(res.rows[0].score), answers: res.rows[0].answers };
+      return null;
+    } catch {
+      /* fall through to memory */
+    }
+  }
+  const row = memResults.get(day)?.get(sub);
+  return row ? { score: row.score, answers: row.answers } : null;
+}
+
+// Ties rank by earlier completion (created_at / insertion order).
+export async function getDailyLeaderboard(day, limit = 10) {
+  if (ready && pool) {
+    try {
+      const res = await pool.query(
+        "SELECT name, score FROM daily_results WHERE day = $1 ORDER BY score DESC, created_at ASC LIMIT $2",
+        [day, Math.min(100, Math.max(1, Number(limit) || 10))]
+      );
+      return res.rows.map((r, i) => ({ rank: i + 1, name: r.name, score: Number(r.score) }));
+    } catch {
+      return [];
+    }
+  }
+  const bySub = memResults.get(day);
+  if (!bySub) return [];
+  return [...bySub.values()]
+    .sort((a, b) => b.score - a.score || a.createdAt - b.createdAt)
+    .slice(0, limit)
+    .map((r, i) => ({ rank: i + 1, name: r.name, score: r.score }));
+}
+
+export async function getDailyRank(day, sub) {
+  if (ready && pool) {
+    try {
+      const res = await pool.query(
+        `SELECT rank FROM (
+           SELECT sub, RANK() OVER (ORDER BY score DESC, created_at ASC) AS rank
+           FROM daily_results WHERE day = $1
+         ) ranked WHERE sub = $2`,
+        [day, sub]
+      );
+      return res.rows[0] ? Number(res.rows[0].rank) : null;
+    } catch {
+      return null;
+    }
+  }
+  const bySub = memResults.get(day);
+  if (!bySub || !bySub.has(sub)) return null;
+  const sorted = [...bySub.entries()].sort(
+    (a, b) => b[1].score - a[1].score || a[1].createdAt - b[1].createdAt
+  );
+  return sorted.findIndex(([s]) => s === sub) + 1;
+}
+
+// Days this player completed, newest first, for streak derivation.
+export async function getDailyDaysPlayed(sub, sinceDays = 90) {
+  if (ready && pool) {
+    try {
+      const res = await pool.query(
+        "SELECT day FROM daily_results WHERE sub = $1 AND day > now() - ($2 || ' days')::interval ORDER BY day DESC",
+        [sub, String(Math.max(1, Number(sinceDays) || 90))]
+      );
+      return res.rows.map((r) => toDayString(r.day));
+    } catch {
+      return [];
+    }
+  }
+  const days = [];
+  for (const [day, bySub] of memResults) if (bySub.has(sub)) days.push(day);
+  return days.sort().reverse();
 }
 
 export default { initStorage, storageReady, recordMatch, topScores };

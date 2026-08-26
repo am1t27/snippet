@@ -18,12 +18,10 @@
   },
   "dependencies": {
     "google-auth-library": "^9.14.0",
-    "node-fetch": "^3.3.2",
     "pg": "^8.23.0",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
-    "shadcn": "^4.19.0",
     "vitest": "^2.1.8"
   },
   "comments": {

@@ -19,8 +19,6 @@
 // rate-limits aggressively when hammered; the ingest is a background job, so
 // slow is fine.
 
-import fetch from "node-fetch";
-
 const RSS_BASE = process.env.APPLE_RSS_BASE || "https://rss.marketingtools.apple.com/api/v2";
 const ITUNES_BASE = process.env.ITUNES_BASE || "https://itunes.apple.com/search";
 // Derive the lookup endpoint from the (test-overridable) search base so a

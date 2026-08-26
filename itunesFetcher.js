@@ -9,8 +9,6 @@
 // (e.g. .../mzaf_<hash>.plus.aac.p.m4a) that does NOT contain the track name,
 // so it cannot leak the answer to a client inspecting the network tab.
 
-import fetch from "node-fetch";
-
 // ----- Constants -----
 // The endpoint is overridable via ITUNES_BASE so tests can point at a local
 // fixture server (offline, deterministic) instead of the live iTunes API.
@@ -249,8 +247,5 @@ export async function fetchSongs(genre, count, opts = {}) {
 export function clearCache() {
   cache.clear();
 }
-
-// Exposed for tests/inspection only.
-export const _cache = cache;
 
 export default fetchSongs;

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// Mock node-fetch (the module imports the default export) so these tests are
+// Stub the global fetch (the module uses Node's built-in) so these tests are
 // fully offline and deterministic.
-vi.mock("node-fetch", () => ({ default: vi.fn() }));
-import fetch from "node-fetch";
+const fetch = vi.fn();
+vi.stubGlobal("fetch", fetch);
 import { fetchSongs, clearCache } from "../itunesFetcher.js";
 
 const ok = (results) => ({ ok: true, json: async () => ({ results }) });

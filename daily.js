@@ -21,9 +21,8 @@ import {
 } from "./dailyLogic.js";
 import {
   saveDailyPuzzle, getDailyPuzzle, saveDailyResult, getDailyResult,
-  getDailyLeaderboard, getDailyRank, getDailyDaysPlayed, getDailyDays, getDailyLeaderAnswers,
+  getDailyLeaderboard, getDailyRank, getDailyDaysPlayed, getDailyDays, getDailyLeaderAnswers, addXp,
 } from "./storage.js";
-import { addXp } from "./storage.js";
 import { awardFor } from "./xpLogic.js";
 import { log } from "./log.js";
 

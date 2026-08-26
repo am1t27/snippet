@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-vi.mock("node-fetch", () => ({ default: vi.fn() }));
+vi.stubGlobal("fetch", vi.fn());
 import {
   DAILY_EPOCH, DAILY_ROUNDS, DAILY_OPTIONS, DAILY_ROUND_MS,
   dayKey, dailyNumber, buildDailyRounds, scoreDailyAnswer, computeStreak, shareText,

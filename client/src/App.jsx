@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useGameSocket } from "./useGameSocket";
 import sound from "./sound";
-import { getStats, recordGame, getDailyLocal, recordDailyLocal } from "./stats";
+import { getStats, recordGame, getDailyLocal, recordDailyLocal, getXpLocal, setXpLocal } from "./stats";
 import {
   EYEBROW, Centered, ErrorBar, Toast, LoadingOverlay, CountdownOverlay, ReactionOverlay,
 } from "./ui";
@@ -25,7 +25,6 @@ import { DailyResults } from "./screens/DailyResults";
 import { LevelUp } from "./screens/LevelUp";
 import { DailyArchive } from "./screens/DailyArchive";
 import { awardFor as xpAwardFor, progressWithin } from "./xp";
-import { getXpLocal, setXpLocal } from "./stats";
 
 export default function App() {
   const {

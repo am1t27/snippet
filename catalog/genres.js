@@ -133,10 +133,6 @@ export function familiesForAppleGenre(appleGenre) {
   return MATCHED_GENRE_KEYS.filter((key) => GENRE_FAMILIES[key].match.test(name));
 }
 
-export function isGenreKey(key) {
-  return Object.prototype.hasOwnProperty.call(GENRE_FAMILIES, String(key ?? "").toLowerCase());
-}
-
 export function seedArtistsFor(key) {
   const fam = GENRE_FAMILIES[String(key ?? "").toLowerCase()];
   return fam ? fam.seedArtists.slice() : [];

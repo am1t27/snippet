@@ -19,6 +19,9 @@ body {
 }
 
 /* ----- CRT signature ----- */
+/* Plain alpha stripes: multiplying black at 14% is visually identical to
+   overlaying black at 14%, and dropping mix-blend-mode avoids a full-screen
+   blend layer in the compositor (matters on low-end mobile). */
 .crt-scan::after {
   content: "";
   position: fixed;
@@ -29,7 +32,6 @@ body {
     rgba(0, 0, 0, 0) 0 2px,
     rgba(0, 0, 0, 0.14) 2px 3px
   );
-  mix-blend-mode: multiply;
 }
 
 /* Phosphor bloom — gold scoreboard, pink GO, red low-time. */

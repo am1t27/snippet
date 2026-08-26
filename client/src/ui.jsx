@@ -239,7 +239,7 @@ export function LoadingOverlay({ message }) {
       role="status"
       aria-live="polite"
       aria-label={message ? `Loading: ${message}` : "Loading"}
-      className="crt-scan fixed inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-void/95"
+      className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-void/95"
     >
       <p className="font-coin text-xs text-pink">LOADING</p>
       <p className="font-console text-sm uppercase tracking-[0.2em] text-dim">
@@ -271,7 +271,7 @@ export function CountdownOverlay({ seconds, round, worth, maxPoints }) {
       role="status"
       aria-live="polite"
       aria-label={`Round ${round ?? 0} starting${n > 0 ? ` in ${n}` : ""}`}
-      className="crt-scan fixed inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-void/95 px-6 text-center"
+      className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-void/95 px-6 text-center"
     >
       <p className={EYEBROW}>Round {String(round ?? 0).padStart(2, "0")}</p>
       {n > 0 ? (

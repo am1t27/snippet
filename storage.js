@@ -63,10 +63,6 @@ export async function initStorage(log) {
   }
 }
 
-export function storageReady() {
-  return ready;
-}
-
 // Persist each non-spectator player's final score for a finished match.
 export async function recordMatch({ players, settings }, log) {
   if (!ready || !pool) return;
@@ -329,17 +325,3 @@ export async function addXp(sub, name, delta) {
   memXp.set(sub, row);
   return { before, total: row.xp };
 }
-
-export async function getXp(sub) {
-  if (ready && pool) {
-    try {
-      const res = await pool.query("SELECT xp FROM player_xp WHERE sub = $1", [sub]);
-      return res.rows[0] ? Number(res.rows[0].xp) : 0;
-    } catch {
-      /* fall through */
-    }
-  }
-  return memXp.get(sub)?.xp ?? 0;
-}
-
-export default { initStorage, storageReady, recordMatch, topScores };

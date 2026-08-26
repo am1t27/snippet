@@ -3,9 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { mkdtemp, readFile } from "node:fs/promises";
 
-// Offline: mock the network layer before anything imports it.
-vi.mock("node-fetch", () => ({ default: vi.fn() }));
-import fetch from "node-fetch";
+// Offline: stub the global fetch before anything uses it.
+const fetch = vi.fn();
+vi.stubGlobal("fetch", fetch);
 
 import { GENRE_FAMILIES, GENRE_KEYS, familiesForAppleGenre, seedArtistsFor } from "../catalog/genres.js";
 import { toCatalogRow, toCatalogRows } from "../catalog/normalize.js";

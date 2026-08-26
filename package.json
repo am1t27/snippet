@@ -23,6 +23,7 @@
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
+    "shadcn": "^4.19.0",
     "vitest": "^2.1.8"
   },
   "comments": {

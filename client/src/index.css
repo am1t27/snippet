@@ -92,6 +92,158 @@ body {
   background-position: 0 0, 4px 7px;
 }
 
+/* ----- Atmosphere layer (MagicUI / Aceternity-inspired, CSS-only ports) ----- */
+
+/* Ambient aurora: two huge blurred color fields drifting behind everything.
+   Kills the empty-black feeling app-wide at ~5% alpha; content never fights
+   it. Fixed + no pointer events; GPU-cheap (transform-only animation). */
+.fx-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fx-aurora::before,
+.fx-aurora::after {
+  content: "";
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+.fx-aurora::before {
+  left: -25vmax;
+  top: -30vmax;
+  background: radial-gradient(closest-side, rgba(255, 61, 127, 0.1), transparent 70%);
+  animation: fx-aurora-a 26s ease-in-out infinite alternate;
+}
+.fx-aurora::after {
+  right: -30vmax;
+  bottom: -35vmax;
+  background: radial-gradient(closest-side, rgba(54, 216, 255, 0.08), transparent 70%);
+  animation: fx-aurora-b 32s ease-in-out infinite alternate;
+}
+@keyframes fx-aurora-a {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(12vmax, 8vmax) scale(1.15); }
+}
+@keyframes fx-aurora-b {
+  from { transform: translate(0, 0) scale(1.1); }
+  to { transform: translate(-10vmax, -6vmax) scale(0.95); }
+}
+
+/* Retro grid floor (MagicUI `retro-grid`, classic CSS port): a perspective
+   plane of scrolling neon gridlines, faded at the horizon. */
+.fx-retro-grid {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 200px;
+  -webkit-mask-image: linear-gradient(to top, black 30%, transparent 85%);
+  mask-image: linear-gradient(to top, black 30%, transparent 85%);
+}
+.fx-retro-grid::before {
+  content: "";
+  position: absolute;
+  inset: -100% -50%;
+  transform: rotateX(55deg);
+  background-image:
+    linear-gradient(to right, rgba(255, 61, 127, 0.28) 1px, transparent 0),
+    linear-gradient(to bottom, rgba(255, 61, 127, 0.28) 1px, transparent 0);
+  background-size: 44px 44px;
+  animation: fx-grid-scroll 1.6s linear infinite;
+}
+@keyframes fx-grid-scroll {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 44px, 0 44px; }
+}
+
+/* Spotlight cards (MagicUI `magic-card` / Aceternity card-spotlight port):
+   a pointer-tracked radial highlight. --mx/--my are written by a delegated
+   listener in App; only elements with .fx-spot get the overlay. */
+@media (pointer: fine) {
+  .fx-spot {
+    position: relative;
+  }
+  .fx-spot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 260ms ease;
+    background: radial-gradient(
+      220px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 201, 60, 0.09),
+      transparent 65%
+    );
+  }
+  .fx-spot:hover::after {
+    opacity: 1;
+  }
+}
+
+/* Marquee (MagicUI `marquee`): duplicated track scrolling forever. */
+.fx-marquee {
+  display: flex;
+  gap: 2.5rem;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+}
+.fx-marquee > * {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2.5rem;
+  min-width: 100%;
+  justify-content: space-around;
+  animation: fx-marquee-scroll 28s linear infinite;
+}
+@keyframes fx-marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100% - 2.5rem)); }
+}
+
+/* Shimmer sweep (MagicUI `shimmer-button`): a light band crosses the primary
+   CTA every few seconds. Applied via .fx-shimmer on the existing buttons. */
+.fx-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.fx-shimmer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  left: -60%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: fx-shimmer-sweep 3.6s ease-in-out infinite;
+}
+@keyframes fx-shimmer-sweep {
+  0%, 55% { left: -60%; }
+  85%, 100% { left: 120%; }
+}
+
+/* Scroll reveal: sections below the fold rise in when they enter the
+   viewport (IntersectionObserver adds .is-in). */
+.fx-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 480ms cubic-bezier(0.16, 1, 0.3, 1), transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fx-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-reveal { opacity: 1; transform: none; transition: none; }
+}
+
 /* ----- Catalog effects (Originkit / KokonutUI ports) ----- */
 
 /* GlitchText (KokonutUI): pink/cyan clone layers jitter behind the real text.

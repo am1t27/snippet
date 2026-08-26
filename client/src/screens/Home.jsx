@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { EYEBROW, PANEL } from "../ui";
 import { BlinkingSquares } from "../fx/BlinkingSquares";
+import { RetroGrid, GenreMarquee, Reveal } from "../fx/atmosphere";
 import { ScrambleText } from "../fx/text";
 
 // The music-games catalog shown on the Home hub and in the side menu. Each
@@ -22,7 +23,8 @@ export const GAMES = [
 export function Home({ games, stats, onOpen, onProfile, dailyInfo }) {
   return (
     <div className="cascade space-y-10">
-      <div className="glow-wash relative space-y-3 py-2">
+      <div className="glow-wash relative space-y-3 py-2 pb-10">
+        <RetroGrid className="-z-20 opacity-80" />
         <BlinkingSquares className="-z-10 opacity-55" />
         <p className="font-coin text-sm leading-relaxed text-pink">INSERT COIN</p>
         <h2 className="fs-display font-marquee font-black uppercase text-bone">
@@ -35,9 +37,13 @@ export function Home({ games, stats, onOpen, onProfile, dailyInfo }) {
         </p>
       </div>
 
+      <div className="-mx-5 border-y border-rule/60 bg-cabinet/40">
+        <GenreMarquee />
+      </div>
+
       <button type="button"
         onClick={onProfile}
-        className={`${PANEL} flex w-full items-center justify-between px-4 py-3 text-left transition-[border-color,transform] hover:border-amber/60 active:scale-[.96]`}
+        className={`${PANEL} fx-spot flex w-full items-center justify-between px-4 py-3 text-left transition-[border-color,transform] hover:border-amber/60 active:scale-[.96]`}
       >
         <span className={EYEBROW}>Your profile</span>
         <span className="font-console text-xs tabular-nums text-dim">
@@ -70,7 +76,7 @@ function GameCard({ game, onOpen, dailyInfo }) {
     <button type="button"
       onClick={() => playable && onOpen(game)}
       disabled={!playable}
-      className={`${PANEL} flex items-start gap-3 px-4 py-4 text-left transition-[border-color,transform] ${
+      className={`${PANEL} fx-spot flex items-start gap-3 px-4 py-4 text-left transition-[border-color,transform] ${
         playable ? "hover:border-pink enabled:active:scale-[.96]" : "opacity-60"
       }`}
     >
@@ -104,17 +110,17 @@ const WHY_ITEMS = [
 
 function WhySnippet() {
   return (
-    <div>
+    <Reveal>
       <p className={EYEBROW}>Why Snippet</p>
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {WHY_ITEMS.map((i) => (
-          <div key={i.t} className={`${PANEL} px-4 py-3`}>
+          <div key={i.t} className={`${PANEL} fx-spot px-4 py-3`}>
             <p className="font-console text-sm uppercase tracking-wide text-bone">{i.t}</p>
             <p className="mt-1 font-console text-xs leading-relaxed text-dim">{i.d}</p>
           </div>
         ))}
       </div>
-    </div>
+    </Reveal>
   );
 }
 
@@ -140,7 +146,7 @@ const FAQ_ITEMS = [
 function Faq() {
   const [open, setOpen] = useState(-1);
   return (
-    <div>
+    <Reveal>
       <p className={EYEBROW}>Popular questions</p>
       <div className="mt-3 space-y-2">
         {FAQ_ITEMS.map((f, i) => {
@@ -163,7 +169,7 @@ function Faq() {
           );
         })}
       </div>
-    </div>
+    </Reveal>
   );
 }
 
@@ -300,7 +306,7 @@ export function SideMenu({ games, onClose, onHome, onOpen, onProfile }) {
     <div className="fixed inset-0 z-[70] flex" role="dialog" aria-modal="true" aria-label="Menu">
       <nav
         ref={panelRef}
-        className="animate-rise w-72 max-w-[80vw] overflow-y-auto border-r border-rule bg-cabinet px-5 py-6"
+        className="animate-rise w-72 max-w-[80vw] overflow-y-auto border-r border-rule bg-cabinet/80 px-5 py-6 backdrop-blur-md"
       >
         <div className="flex items-center justify-between">
           <span className="font-marquee text-xl font-black uppercase tracking-tight text-bone">Snippet</span>

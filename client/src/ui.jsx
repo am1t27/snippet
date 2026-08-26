@@ -10,7 +10,7 @@ export const PANEL = "border border-rule bg-cabinet";
 export const PANEL_LUX = "panel-lux bg-cabinet";
 // Primary CTA = pink with a soft neon glow.
 export const BTN_AMBER =
-  "bg-pink px-5 py-4 font-console text-sm uppercase tracking-[0.2em] text-black " +
+  "fx-shimmer bg-pink px-5 py-4 font-console text-sm uppercase tracking-[0.2em] text-black " +
   "shadow-[0_0_24px_-6px_#FF3D7F] transition-[transform,background-color,box-shadow] duration-150 ease-spring " +
   "hover:bg-[#ff5e96] hover:-translate-y-0.5 hover:shadow-lift-pink active:scale-[.96] active:translate-y-0 " +
   "focus:outline-none focus:ring-2 focus:ring-pink focus:ring-offset-2 focus:ring-offset-void " +

@@ -25,6 +25,7 @@ import { DailyResults } from "./screens/DailyResults";
 import { LevelUp } from "./screens/LevelUp";
 import { DailyArchive } from "./screens/DailyArchive";
 import { ClickFX } from "./fx/interact";
+import { AuroraLayer, useSpotlight } from "./fx/atmosphere";
 import { awardFor as xpAwardFor, progressWithin } from "./xp";
 import { getXpLocal, setXpLocal } from "./stats";
 
@@ -39,6 +40,8 @@ export default function App() {
 
   // A picked archive day rides the normal daily entry flow, then starts unranked.
   const [archiveDay, setArchiveDay] = useState(null);
+
+  useSpotlight(); // feeds .fx-spot cards their pointer position
 
   // The award being celebrated right now (server's for verified, locally
   // computed for guests). Only level-ups interrupt; flat gains show passively.
@@ -291,7 +294,8 @@ export default function App() {
   };
 
   return (
-    <div className="crt-scan min-h-screen bg-void font-console text-bone antialiased selection:bg-amber selection:text-black">
+    <div className="crt-scan min-h-screen font-console text-bone antialiased selection:bg-amber selection:text-black">
+      <AuroraLayer />
       {error && <ErrorBar message={error} />}
       {loading && <LoadingOverlay message={loading.message} />}
       {countdown && (

@@ -5,7 +5,7 @@
 import { buildRound, shuffle, questionValueFor, speedBonusFor, streakBonusFor } from "./gameLogic.js";
 import { GENRE_KEYS } from "./catalog/genres.js";
 
-export const DAILY_EPOCH = "2026-08-28"; // Daily #1
+export const DAILY_EPOCH = "2026-08-26"; // Daily #1
 export const DAILY_ROUNDS = 5;
 export const DAILY_OPTIONS = 4;
 export const DAILY_ROUND_MS = 10000;

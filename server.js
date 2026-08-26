@@ -26,6 +26,7 @@ import {
 } from "./gameLogic.js";
 import { log } from "./log.js";
 import { initStorage, recordMatch, topScores } from "./storage.js";
+import { registerDaily } from "./daily.js";
 
 // ----- Configuration -----
 const PORT = process.env.PORT || 3000;
@@ -763,6 +764,9 @@ io.on("connection", (socket) => {
     socket.disconnect(true);
     return;
   }
+
+  // --- Daily challenge (solo async) — handlers live in daily.js ---
+  registerDaily(socket, { resolveIdentity, rateLimited });
 
   // --- createRoom: open a new room and become host ---
   socket.on("createRoom", async (payload) => {

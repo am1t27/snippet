@@ -12,7 +12,7 @@ describe("day math", () => {
   });
   it("dailyNumber counts from the epoch as #1", () => {
     expect(dailyNumber(DAILY_EPOCH)).toBe(1);
-    expect(dailyNumber("2026-09-01")).toBe(5);
+    expect(dailyNumber("2026-09-01")).toBe(7);
   });
 });
 

@@ -44,6 +44,14 @@ export async function initStorage(log) {
         PRIMARY KEY (day, sub)
       );
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS player_xp (
+        sub TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        xp INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
     ready = true;
     log?.info?.("postgres storage ready (global leaderboard enabled)");
     return true;
@@ -232,6 +240,48 @@ export async function getDailyDaysPlayed(sub, sinceDays = 90) {
   const days = [];
   for (const [day, bySub] of memResults) if (bySub.has(sub)) days.push(day);
   return days.sort().reverse();
+}
+
+// ----- Player XP (verified players only; guests live in their browser) -----
+
+const memXp = new Map(); // sub -> { name, xp }
+
+// Returns the player's total BEFORE this add plus the new total, so callers
+// can hand xpLogic.awardFor an accurate before/after pair atomically.
+export async function addXp(sub, name, delta) {
+  const d = Math.max(0, Number(delta) || 0);
+  if (ready && pool) {
+    try {
+      const res = await pool.query(
+        `INSERT INTO player_xp(sub, name, xp) VALUES($1, $2, $3)
+         ON CONFLICT (sub) DO UPDATE SET xp = player_xp.xp + $3, name = $2, updated_at = now()
+         RETURNING xp`,
+        [sub, name, d]
+      );
+      const total = Number(res.rows[0].xp);
+      return { before: total - d, total };
+    } catch {
+      /* fall through to memory */
+    }
+  }
+  const row = memXp.get(sub) || { name, xp: 0 };
+  const before = row.xp;
+  row.xp += d;
+  row.name = name;
+  memXp.set(sub, row);
+  return { before, total: row.xp };
+}
+
+export async function getXp(sub) {
+  if (ready && pool) {
+    try {
+      const res = await pool.query("SELECT xp FROM player_xp WHERE sub = $1", [sub]);
+      return res.rows[0] ? Number(res.rows[0].xp) : 0;
+    } catch {
+      /* fall through */
+    }
+  }
+  return memXp.get(sub)?.xp ?? 0;
 }
 
 export default { initStorage, storageReady, recordMatch, topScores };

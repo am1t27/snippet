@@ -22,6 +22,9 @@ import { Playing } from "./screens/Playing";
 import { Reveal } from "./screens/Reveal";
 import { GameOver } from "./screens/GameOver";
 import { DailyResults } from "./screens/DailyResults";
+import { LevelUp } from "./screens/LevelUp";
+import { awardFor as xpAwardFor, progressWithin } from "./xp";
+import { getXpLocal, setXpLocal } from "./stats";
 
 export default function App() {
   const {
@@ -29,7 +32,17 @@ export default function App() {
     messages, reactions, roomCode, createRoom, joinRoom, quickPlay, start, guess, restart,
     sendChat, sendReaction, clearError, clearNotice, leaveRoom,
     daily, dailyStatus, dailyFinish, refreshDailyStatus, startDaily, answerDaily, leaveDaily,
+    xpAward, clearXpAward,
   } = useGameSocket();
+
+  // The award being celebrated right now (server's for verified, locally
+  // computed for guests). Only level-ups interrupt; flat gains show passively.
+  const [localAward, setLocalAward] = useState(null);
+  const award = xpAward || localAward;
+  const dismissAward = () => {
+    clearXpAward();
+    setLocalAward(null);
+  };
 
   // --- Mobile audio unlock (priming) ---------------------------------------
   // One persistent <audio> at the root, primed on the first tap (Enter/Start)
@@ -128,6 +141,14 @@ export default function App() {
     if (!dailyFinish) return;
     setDailyLocal(recordDailyLocal({ day: dailyFinish.day, score: dailyFinish.score, perRound: dailyFinish.perRound }));
     sound.play(dailyFinish.perRound.filter(Boolean).length >= 3 ? "win" : "lose");
+    if (dailyFinish.xp) {
+      // Verified: the payload's award is authoritative.
+      if (dailyFinish.xp.leveledUp) setLocalAward(dailyFinish.xp);
+    } else {
+      const a = xpAwardFor(getXpLocal(), dailyFinish.score);
+      setXpLocal(a.total);
+      if (a.leveledUp) setLocalAward(a);
+    }
   }, [dailyFinish]);
 
   // What the Home card shows: server day/number + played state from either the
@@ -233,6 +254,14 @@ export default function App() {
         rounds: gameOver.roundHistory?.length || 0,
       });
       setStats(next);
+      // Guest XP mirrors the server curve on this device. Verified players
+      // get the authoritative xpAward event instead; skip to avoid doubling.
+      const me = players.find((p) => p.id === myId);
+      if (!me?.google) {
+        const a = xpAwardFor(getXpLocal(), board[idx]?.score || 0);
+        setXpLocal(a.total);
+        if (a.leveledUp) setLocalAward(a);
+      }
     }
   }, [gameOver, myId]);
   // Allow the next game to record again.
@@ -261,6 +290,7 @@ export default function App() {
         />
       )}
       {notice && <Toast message={notice} />}
+      {award && award.leveledUp && <LevelUp award={award} onClose={dismissAward} />}
       <ReactionOverlay reactions={reactions} />
       <div className="sr-only" role="status" aria-live="polite">
         {announce}
@@ -310,7 +340,7 @@ export default function App() {
           ) : !joined && view === "home" ? (
             <Home games={GAMES} stats={stats} onOpen={openGame} onProfile={() => setView("profile")} dailyInfo={dailyInfo} />
           ) : !joined && view === "profile" ? (
-            <Profile stats={stats} onBack={() => setView("home")} />
+            <Profile stats={stats} xp={award ? progressWithin(award.total) : progressWithin(getXpLocal())} onBack={() => setView("home")} />
           ) : !joined ? (
             <EntryScreen
               onCreate={handleCreate}

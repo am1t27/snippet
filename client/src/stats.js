@@ -58,4 +58,24 @@ export function recordDailyLocal({ day, score, perRound }) {
   return next;
 }
 
-export default { getStats, recordGame, getDailyLocal, recordDailyLocal };
+// ----- Guest XP (device-local; verified players are server-side) -----
+const XP_KEY = "snippet.xp";
+
+export function getXpLocal() {
+  try {
+    const n = Number(JSON.parse(localStorage.getItem(XP_KEY) || "0"));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function setXpLocal(total) {
+  try {
+    localStorage.setItem(XP_KEY, JSON.stringify(Math.max(0, Number(total) || 0)));
+  } catch {
+    /* storage blocked */
+  }
+}
+
+export default { getStats, recordGame, getDailyLocal, recordDailyLocal, getXpLocal, setXpLocal };

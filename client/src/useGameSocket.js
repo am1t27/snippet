@@ -58,6 +58,7 @@ export function useGameSocket() {
   const [daily, setDaily] = useState(false); // a solo daily session is live
   const [dailyStatus, setDailyStatus] = useState(null); // last daily:status payload
   const [dailyFinish, setDailyFinish] = useState(null); // daily:finish payload (results screen)
+  const [xpAward, setXpAward] = useState(null); // server xp award (verified) after a match
   const seqRef = useRef(0); // monotonic id for stable React keys
 
   useEffect(() => {
@@ -149,6 +150,9 @@ export function useGameSocket() {
     // Game over: final leaderboard.
     socket.on("gameOver", (g) => setGameOver(g));
 
+    // Per-player XP award (verified players; guests compute locally).
+    socket.on("xpAward", (a) => setXpAward(a));
+
     // Daily challenge (solo async). Status feeds the Home card; finish is the
     // results screen payload. Round traffic reuses the live events above.
     socket.on("daily:status", (d) => setDailyStatus(d));
@@ -215,6 +219,7 @@ export function useGameSocket() {
     setCountdown(null);
     setRoundMeta(null);
   }, []);
+  const clearXpAward = useCallback(() => setXpAward(null), []);
   const clearError = useCallback(() => setError(null), []);
   const clearNotice = useCallback(() => setNotice(null), []);
   const leaveRoom = useCallback(() => {
@@ -261,6 +266,8 @@ export function useGameSocket() {
     daily,
     dailyStatus,
     dailyFinish,
+    xpAward,
+    clearXpAward,
     refreshDailyStatus,
     startDaily,
     answerDaily,

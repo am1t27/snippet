@@ -23,6 +23,8 @@ import {
   saveDailyPuzzle, getDailyPuzzle, saveDailyResult, getDailyResult,
   getDailyLeaderboard, getDailyRank, getDailyDaysPlayed,
 } from "./storage.js";
+import { addXp } from "./storage.js";
+import { awardFor } from "./xpLogic.js";
 import { log } from "./log.js";
 
 const COUNTDOWN_MS = 3000;
@@ -178,12 +180,19 @@ async function finishDaily(socket, s) {
   let ranked = false;
   let myRank = null;
   let streak = null;
+  let xp = null;
   if (s.sub) {
     ranked = await saveDailyResult({
       day: s.day, sub: s.sub, name: s.name, score: s.score, answers: s.answers,
     });
     myRank = await getDailyRank(s.day, s.sub);
     streak = computeStreak(await getDailyDaysPlayed(s.sub), s.day);
+    // XP only for the ranked (first) completion — replays of past days or
+    // degraded states never farm the curve.
+    if (ranked) {
+      const { before } = await addXp(s.sub, s.name, Math.max(0, Math.round(s.score / 10)));
+      xp = awardFor(before, s.score);
+    }
   }
   const leaderboard = await getDailyLeaderboard(s.day, 10);
   socket.emit("daily:finish", {
@@ -196,6 +205,7 @@ async function finishDaily(socket, s) {
     myRank,
     streak,
     ranked,
+    xp, // null for guests; they mirror the curve locally
   });
 }
 

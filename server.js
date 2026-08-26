@@ -25,7 +25,8 @@ import {
   streakBonusFor,
 } from "./gameLogic.js";
 import { log } from "./log.js";
-import { initStorage, recordMatch, topScores } from "./storage.js";
+import { initStorage, recordMatch, topScores, addXp } from "./storage.js";
+import { awardFor } from "./xpLogic.js";
 import { registerDaily } from "./daily.js";
 
 // ----- Configuration -----
@@ -588,6 +589,17 @@ function gameOver(room) {
   broadcastState(room);
   // Persist final scores for the global leaderboard (no-op without DATABASE_URL).
   recordMatch({ players: [...room.players.values()], settings: room.settings }, log);
+  // XP for verified players: persisted server-side and delivered per-socket
+  // (each player's award differs, so it never rides the room broadcast).
+  // Guests compute the same award locally from their own score.
+  for (const p of room.players.values()) {
+    if (p.spectator || !p.sub) continue;
+    const target = io.sockets.sockets.get(p.id);
+    if (!target) continue;
+    addXp(p.sub, p.name, Math.max(0, Math.round(p.score / 10)))
+      .then(({ before }) => target.emit("xpAward", awardFor(before, p.score)))
+      .catch(() => {});
+  }
 }
 
 // ----- HTTP + Socket.IO -----

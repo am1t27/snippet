@@ -179,7 +179,7 @@ function SiteFooter() {
 }
 
 // ---------- My profile (local stats) ----------
-export function Profile({ stats, onBack }) {
+export function Profile({ stats, xp, onBack }) {
   const acc = stats.rounds > 0 ? Math.round((stats.correct / stats.rounds) * 100) : 0;
   const winRate = stats.games > 0 ? Math.round((stats.wins / stats.games) * 100) : 0;
   const rows = [
@@ -197,6 +197,25 @@ export function Profile({ stats, onBack }) {
         <p className="font-coin text-sm text-pink">MY PROFILE</p>
         <p className="mt-2 font-console text-sm text-dim">Your stats on this device — play more to fill them in.</p>
       </div>
+
+      {xp && (
+        <div className="panel-lux px-4 py-4">
+          <div className="flex items-baseline justify-between">
+            <span className="font-coin text-xs text-amber">{xp.rank}</span>
+            <span className={EYEBROW}>Level {xp.level}</span>
+          </div>
+          <div className="mt-3 h-1.5 w-full bg-rule" role="progressbar" aria-valuenow={xp.into} aria-valuemin={0} aria-valuemax={xp.needed} aria-label={`XP progress: ${xp.into} of ${xp.needed}`}>
+            <div
+              className="h-full bg-amber shadow-[0_0_10px_#FFC93C] transition-[width] duration-700"
+              style={{ width: `${Math.min(100, Math.round((xp.into / xp.needed) * 100))}%` }}
+            />
+          </div>
+          <p className="mt-2 font-console text-[11px] tabular-nums text-dim">
+            {xp.into} / {xp.needed} XP to level {xp.level + 1}
+          </p>
+        </div>
+      )}
+
       <ul className={`${PANEL} divide-y divide-rule`}>
         {rows.map((r) => (
           <li key={r.k} className="flex items-center justify-between px-4 py-3">

@@ -39,6 +39,7 @@ const CREATE_SQL = `
     artist_name  TEXT NOT NULL,
     artist_id    TEXT,
     preview_url  TEXT NOT NULL,
+    artwork_url  TEXT,
     apple_genre  TEXT,
     genre_keys   TEXT[] NOT NULL,
     release_year INTEGER,
@@ -49,6 +50,8 @@ const CREATE_SQL = `
   CREATE INDEX IF NOT EXISTS catalog_tracks_genre_idx ON catalog_tracks USING GIN (genre_keys);
   CREATE INDEX IF NOT EXISTS catalog_tracks_year_idx  ON catalog_tracks (release_year);
 `;
+// Older deployments predate artwork; bring their table up to date on boot.
+const MIGRATE_SQL = "ALTER TABLE catalog_tracks ADD COLUMN IF NOT EXISTS artwork_url TEXT";
 
 // ----- init -----
 
@@ -60,6 +63,7 @@ export async function initCatalog(log) {
       const { default: pg } = await import("pg");
       pool = new pg.Pool({ connectionString: url, max: 4 });
       await pool.query(CREATE_SQL);
+      await pool.query(MIGRATE_SQL);
       backend = "postgres";
       const { total } = await catalogStats();
       logger?.info?.("catalog ready (postgres)", { tracks: total });
@@ -132,18 +136,19 @@ export async function upsertTracks(list) {
       const params = [];
       chunk.forEach((r, n) => {
         const b = n * 10;
-        values.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7}::text[],$${b + 8},$${b + 9},$${b + 10})`);
+        values.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8}::text[],$${b + 9},$${b + 10},$${b + 11})`);
         params.push(
-          r.trackId, r.trackName, r.artistName, r.artistId, r.previewUrl,
+          r.trackId, r.trackName, r.artistName, r.artistId, r.previewUrl, r.artworkUrl ?? null,
           r.appleGenre, r.genreKeys, r.releaseYear, r.durationMs, r.baseTitle
         );
       });
       await pool.query(
         `INSERT INTO catalog_tracks
-           (track_id, track_name, artist_name, artist_id, preview_url, apple_genre, genre_keys, release_year, duration_ms, base_title)
+           (track_id, track_name, artist_name, artist_id, preview_url, artwork_url, apple_genre, genre_keys, release_year, duration_ms, base_title)
          VALUES ${values.join(",")}
          ON CONFLICT (track_id) DO UPDATE SET
            preview_url = EXCLUDED.preview_url,
+           artwork_url = COALESCE(EXCLUDED.artwork_url, catalog_tracks.artwork_url),
            apple_genre = COALESCE(EXCLUDED.apple_genre, catalog_tracks.apple_genre),
            release_year = COALESCE(EXCLUDED.release_year, catalog_tracks.release_year),
            genre_keys = ARRAY(SELECT DISTINCT unnest(catalog_tracks.genre_keys || EXCLUDED.genre_keys)),
@@ -159,6 +164,7 @@ export async function upsertTracks(list) {
     const prev = rows.get(r.trackId);
     if (prev) {
       prev.previewUrl = r.previewUrl;
+      prev.artworkUrl = r.artworkUrl ?? prev.artworkUrl;
       prev.appleGenre = r.appleGenre ?? prev.appleGenre;
       prev.releaseYear = r.releaseYear ?? prev.releaseYear;
       prev.genreKeys = [...new Set([...(prev.genreKeys || []), ...(r.genreKeys || [])])];
@@ -241,7 +247,8 @@ async function candidates(genre, count, range = null) {
     }
     const res = await pool.query(
       `SELECT track_id AS "trackId", track_name AS "trackName", artist_name AS "artistName",
-              preview_url AS "previewUrl", release_year AS "releaseYear", base_title AS "baseTitle",
+              preview_url AS "previewUrl", artwork_url AS "artworkUrl",
+              release_year AS "releaseYear", base_title AS "baseTitle",
               apple_genre AS "appleGenre"
          FROM catalog_tracks
         WHERE ${where}

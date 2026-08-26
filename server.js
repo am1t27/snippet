@@ -446,6 +446,7 @@ function beginPlaying(room) {
   room.correct = picked.correct; // SERVER-ONLY
   room.correctArtist = picked.artistName;
   room.correctTrackName = picked.trackName;
+  room.correctArtwork = picked.artworkUrl || null; // reveal-only, like the names
   room.roundStartedAt = Date.now();
 
   const roundIndex = room.round - 1;
@@ -548,7 +549,7 @@ function endRound(room) {
   // both so the client can show the full song regardless of mode.
   const revealPayload = {
     correct: correctName,
-    track: { trackName: room.correctTrackName, artistName: room.correctArtist },
+    track: { trackName: room.correctTrackName, artistName: room.correctArtist, artworkUrl: room.correctArtwork },
     mode: room.settings.mode,
     round: room.round,
     totalRounds: room.settings.rounds,

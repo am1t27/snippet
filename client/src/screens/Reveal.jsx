@@ -15,6 +15,16 @@ export function Reveal({ reveal, myId, onReact, players }) {
     reveal?.leaderboard ??
     results.toSorted((a, b) => b.score - a.score).map((p, i) => ({ rank: i + 1, ...p }));
   const winnerResult = winner ? results.find((r) => r.name === winner.name) : null;
+  // My own outcome drives the answer card's mood: green flood, red shake, or
+  // neutral (spectator / didn't answer).
+  const mine = results.find((r) => r.id === myId) || null;
+  const cardMood = mine
+    ? mine.correct
+      ? "animate-flood border-good/50"
+      : mine.answerTimeSeconds != null
+      ? "animate-shake3 border-bad/40"
+      : ""
+    : "";
   const winnerPoints = winnerResult?.pointsEarned ?? 0;
   const winnerStreak = winnerResult?.streakBonus ?? 0;
   const shownPoints = useCountUp(winnerPoints);
@@ -26,13 +36,32 @@ export function Reveal({ reveal, myId, onReact, players }) {
       </p>
 
       {track && (
-        <div className={`${PANEL} animate-rise px-5 py-4`} style={{ animationDelay: "80ms" }}>
-          <p className={EYEBROW}>The answer</p>
-          <p className="mt-2 font-marquee text-lg font-black uppercase tracking-tight text-bone">
-            <span className={isArtist ? "text-amber" : ""}>{track.artistName}</span>
-            <span className="text-dim"> — </span>
-            <span className={isArtist ? "" : "text-amber"}>{track.trackName}</span>
-          </p>
+        <div
+          className={`panel-lux animate-rise flex items-center gap-4 px-5 py-4 ${cardMood}`}
+          style={{ animationDelay: "80ms" }}
+        >
+          {/* Album artwork; glyph tile until the catalog's next ingest fills it. */}
+          {track.artworkUrl ? (
+            <img
+              src={track.artworkUrl}
+              alt=""
+              width="80"
+              height="80"
+              className="h-20 w-20 shrink-0 animate-popin border border-rule object-cover"
+            />
+          ) : (
+            <div className="grid h-20 w-20 shrink-0 animate-popin place-items-center border border-rule bg-void font-marquee text-3xl text-pink">
+              ♬
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className={EYEBROW}>The answer</p>
+            <p className="mt-2 font-marquee text-lg font-black uppercase tracking-tight text-bone">
+              <span className={isArtist ? "text-amber" : ""}>{track.artistName}</span>
+              <span className="text-dim"> — </span>
+              <span className={isArtist ? "" : "text-amber"}>{track.trackName}</span>
+            </p>
+          </div>
         </div>
       )}
 

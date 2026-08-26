@@ -89,6 +89,7 @@ function normalize(results) {
       trackName: r.trackName,
       artistName: r.artistName,
       previewUrl: r.previewUrl,
+      artworkUrl: r.artworkUrl100 ? String(r.artworkUrl100).replace("100x100", "300x300") : null,
       trackId: r.trackId,
       primaryGenreName: r.primaryGenreName || null,
       releaseYear: r.releaseDate ? Number(String(r.releaseDate).slice(0, 4)) : null,

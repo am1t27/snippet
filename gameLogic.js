@@ -122,6 +122,7 @@ export function buildRound(pool, usedTrackIds, settings) {
     artistName: correct.artistName,
     trackName: correct.trackName,
     trackId: correct.trackId,
+    artworkUrl: correct.artworkUrl || null, // shown on reveal only
   };
 }
 

@@ -141,7 +141,7 @@ async function resolveRound(socket, s, choice) {
   socket.emit("state", dailyState(s, socket, "ROUND_REVEAL"));
   socket.emit("reveal", {
     correct: round.correct,
-    track: { trackName: round.trackName, artistName: round.artistName },
+    track: { trackName: round.trackName, artistName: round.artistName, artworkUrl: round.artworkUrl || null },
     mode: "TITLE",
     round: idx + 1,
     totalRounds: DAILY_ROUNDS,

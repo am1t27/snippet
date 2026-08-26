@@ -76,6 +76,9 @@ export function toCatalogRow(raw, seedGenreKeys = []) {
     artistName,
     artistId: raw.artistId ? String(raw.artistId) : null,
     previewUrl: raw.previewUrl,
+    // iTunes serves any square size via URL substitution; 300 is crisp enough
+    // for the reveal card without weighing down the payload.
+    artworkUrl: raw.artworkUrl100 ? String(raw.artworkUrl100).replace("100x100", "300x300") : null,
     appleGenre,
     genreKeys,
     releaseYear: Number.isFinite(year) ? year : null,

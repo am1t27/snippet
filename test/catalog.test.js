@@ -16,6 +16,7 @@ import {
 
 const raw = (over = {}) => ({
   wrapperType: "track",
+  artworkUrl100: "https://cdn/art/100x100bb.jpg",
   trackId: 100,
   trackName: "Song",
   artistName: "Artist",
@@ -74,6 +75,11 @@ describe("normalize", () => {
       releaseYear: 2015,
     });
     expect(row.genreKeys).toContain("hip-hop");
+    expect(row.artworkUrl).toBe("https://cdn/art/300x300bb.jpg"); // upscaled for the reveal card
+  });
+
+  it("tolerates missing artwork", () => {
+    expect(toCatalogRow(raw({ artworkUrl100: undefined })).artworkUrl).toBeNull();
   });
 
   it("drops non-original versions that would mislabel decades", () => {

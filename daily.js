@@ -21,7 +21,7 @@ import {
 } from "./dailyLogic.js";
 import {
   saveDailyPuzzle, getDailyPuzzle, saveDailyResult, getDailyResult,
-  getDailyLeaderboard, getDailyRank, getDailyDaysPlayed,
+  getDailyLeaderboard, getDailyRank, getDailyDaysPlayed, getDailyDays,
 } from "./storage.js";
 import { addXp } from "./storage.js";
 import { awardFor } from "./xpLogic.js";
@@ -181,7 +181,7 @@ async function finishDaily(socket, s) {
   let myRank = null;
   let streak = null;
   let xp = null;
-  if (s.sub) {
+  if (s.sub && s.rankable) {
     ranked = await saveDailyResult({
       day: s.day, sub: s.sub, name: s.name, score: s.score, answers: s.answers,
     });
@@ -205,6 +205,7 @@ async function finishDaily(socket, s) {
     myRank,
     streak,
     ranked,
+    practice: !s.rankable, // archive replay: client must not award local XP
     xp, // null for guests; they mirror the curve locally
   });
 }
@@ -252,23 +253,41 @@ export function registerDaily(socket, { resolveIdentity, rateLimited }) {
         socket.emit("errorMsg", { message: id.error });
         return;
       }
-      const day = dayKey();
-      if (id.sub && (await getDailyResult(day, id.sub))) {
+      const today = dayKey();
+      // Optional archive replay: any past frozen day, always unranked.
+      const wantDay = payload && typeof payload.day === "string" ? payload.day : today;
+      const isToday = wantDay === today;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(wantDay) || wantDay > today || dailyNumber(wantDay) < 1) {
+        socket.emit("errorMsg", { message: "That puzzle day does not exist." });
+        return;
+      }
+      const day = wantDay;
+      if (isToday && id.sub && (await getDailyResult(day, id.sub))) {
         socket.emit("errorMsg", { message: "You already played today's daily. New puzzle at midnight UTC." });
         return;
       }
       let rounds;
-      try {
-        rounds = await puzzleForDay(day);
-      } catch (e) {
-        log.error("daily: puzzle build failed", { error: String((e && e.message) || e) });
-        socket.emit("errorMsg", { message: "Today's puzzle is not ready yet. Try again in a minute." });
-        return;
+      if (isToday) {
+        try {
+          rounds = await puzzleForDay(day);
+        } catch (e) {
+          log.error("daily: puzzle build failed", { error: String((e && e.message) || e) });
+          socket.emit("errorMsg", { message: "Today's puzzle is not ready yet. Try again in a minute." });
+          return;
+        }
+      } else {
+        // Past days are replayed exactly as frozen — never regenerated.
+        rounds = await getDailyPuzzle(day);
+        if (!rounds) {
+          socket.emit("errorMsg", { message: "No puzzle was saved for that day." });
+          return;
+        }
       }
       const s = {
         day, rounds, roundIdx: 0, score: 0, streak: 0,
         perRound: [], answers: [], answered: false, lastRoundScore: 0,
         roundStartedAt: 0, timer: null,
+        rankable: isToday, // archive replays never rank, streak, or earn XP
         sub: id.sub || null, name: id.name, picture: id.picture || null,
       };
       sessions.set(socket.id, s);
@@ -287,6 +306,17 @@ export function registerDaily(socket, { resolveIdentity, rateLimited }) {
     const choice = payload && typeof payload.choice === "string" ? payload.choice : null;
     if (choice === null || !round.options.includes(choice)) return;
     resolveRound(socket, s, choice);
+  });
+
+  socket.on("daily:archive", async (payload) => {
+    if (rateLimited(socket, "dailyArchive", 5, 10000)) return;
+    let sub = null;
+    if (payload && payload.idToken) {
+      const id = await resolveIdentity(payload);
+      if (!id.error && id.sub) sub = id.sub;
+    }
+    const days = (await getDailyDays(sub, 60)).map((d) => ({ ...d, number: dailyNumber(d.day) }));
+    socket.emit("daily:archive", { days });
   });
 
   socket.on("daily:leave", () => dropSession(socket));

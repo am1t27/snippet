@@ -224,6 +224,42 @@ export async function getDailyRank(day, sub) {
   return sorted.findIndex(([s]) => s === sub) + 1;
 }
 
+// Recent puzzle days (newest first) with this player's result when present.
+// sub may be null (guest): every day comes back unplayed.
+export async function getDailyDays(sub, limit = 60) {
+  const cap = Math.min(120, Math.max(1, Number(limit) || 60));
+  if (ready && pool) {
+    try {
+      const res = await pool.query(
+        `SELECT p.day, r.score, r.answers
+           FROM daily_puzzles p
+           LEFT JOIN daily_results r ON r.day = p.day AND r.sub = $2
+          ORDER BY p.day DESC
+          LIMIT $1`,
+        [cap, sub ?? ""]
+      );
+      return res.rows.map((row) => ({
+        day: toDayString(row.day),
+        played: row.score != null,
+        score: row.score != null ? Number(row.score) : null,
+        perRound: Array.isArray(row.answers) ? row.answers.map((a) => Boolean(a.correct)) : null,
+      }));
+    } catch {
+      /* fall through to memory */
+    }
+  }
+  const days = [...memPuzzles.keys()].sort().reverse().slice(0, cap);
+  return days.map((day) => {
+    const r = sub ? memResults.get(day)?.get(sub) : null;
+    return {
+      day,
+      played: Boolean(r),
+      score: r ? r.score : null,
+      perRound: r ? (r.answers || []).map((a) => Boolean(a.correct)) : null,
+    };
+  });
+}
+
 // Days this player completed, newest first, for streak derivation.
 export async function getDailyDaysPlayed(sub, sinceDays = 90) {
   if (ready && pool) {

@@ -23,6 +23,7 @@ import { Reveal } from "./screens/Reveal";
 import { GameOver } from "./screens/GameOver";
 import { DailyResults } from "./screens/DailyResults";
 import { LevelUp } from "./screens/LevelUp";
+import { DailyArchive } from "./screens/DailyArchive";
 import { awardFor as xpAwardFor, progressWithin } from "./xp";
 import { getXpLocal, setXpLocal } from "./stats";
 
@@ -32,8 +33,11 @@ export default function App() {
     messages, reactions, roomCode, createRoom, joinRoom, quickPlay, start, guess, restart,
     sendChat, sendReaction, clearError, clearNotice, leaveRoom,
     daily, dailyStatus, dailyFinish, refreshDailyStatus, startDaily, answerDaily, leaveDaily,
-    xpAward, clearXpAward,
+    xpAward, clearXpAward, dailyArchive, requestDailyArchive,
   } = useGameSocket();
+
+  // A picked archive day rides the normal daily entry flow, then starts unranked.
+  const [archiveDay, setArchiveDay] = useState(null);
 
   // The award being celebrated right now (server's for verified, locally
   // computed for guests). Only level-ups interrupt; flat gains show passively.
@@ -139,12 +143,14 @@ export default function App() {
   // A finished daily: persist the guest-local streak once per finish payload.
   useEffect(() => {
     if (!dailyFinish) return;
-    setDailyLocal(recordDailyLocal({ day: dailyFinish.day, score: dailyFinish.score, perRound: dailyFinish.perRound }));
+    if (!dailyFinish.practice) setDailyLocal(recordDailyLocal({ day: dailyFinish.day, score: dailyFinish.score, perRound: dailyFinish.perRound }));
     sound.play(dailyFinish.perRound.filter(Boolean).length >= 3 ? "win" : "lose");
     if (dailyFinish.xp) {
       // Verified: the payload's award is authoritative.
       if (dailyFinish.xp.leveledUp) setLocalAward(dailyFinish.xp);
-    } else {
+    } else if (!dailyFinish.practice) {
+      // Guests mirror the curve locally — but practice (archive) runs never
+      // earn XP, matching the server's rule for verified players.
       const a = xpAwardFor(getXpLocal(), dailyFinish.score);
       setXpLocal(a.total);
       if (a.leveledUp) setLocalAward(a);
@@ -205,12 +211,19 @@ export default function App() {
 
   const handleStartDaily = (name, idToken) => {
     primeAudio();
-    startDaily(name, idToken);
+    startDaily(name, idToken, archiveDay || undefined);
+    setArchiveDay(null);
   };
   const handleDailyHome = () => {
     leaveDaily();
     refreshDailyStatus();
+    setArchiveDay(null);
     setView("home");
+  };
+  const openArchive = () => {
+    requestDailyArchive();
+    leaveDaily();
+    setView("archive");
   };
 
   // Reveal: play correct/wrong sting and announce my result.
@@ -329,13 +342,27 @@ export default function App() {
           {!connected && !joined ? (
             <Centered eyebrow="Status" title="Connecting…" />
           ) : dailyFinish ? (
-            <DailyResults finish={dailyFinish} localStreak={dailyLocal.streak} onHome={handleDailyHome} />
+            <DailyResults finish={dailyFinish} localStreak={dailyLocal.streak} onHome={handleDailyHome} onArchive={openArchive} />
+          ) : !joined && view === "archive" ? (
+            <DailyArchive
+              days={dailyArchive}
+              onPlay={(day) => {
+                setArchiveDay(day);
+                setView("daily");
+              }}
+              onBack={() => setView("daily")}
+            />
           ) : !joined && view === "daily" ? (
             <EntryScreen
               mode="daily"
-              dailyNumber={dailyInfo.number}
+              dailyNumber={archiveDay ? null : dailyInfo.number}
+              archiveDay={archiveDay}
               onCreate={handleStartDaily}
-              onHome={() => setView("home")}
+              onArchive={openArchive}
+              onHome={() => {
+                setArchiveDay(null);
+                setView("home");
+              }}
             />
           ) : !joined && view === "home" ? (
             <Home games={GAMES} stats={stats} onOpen={openGame} onProfile={() => setView("profile")} dailyInfo={dailyInfo} />

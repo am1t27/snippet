@@ -15,7 +15,7 @@ function untilNextPuzzle() {
   return `${h}:${m}:${sec}`;
 }
 
-export function DailyResults({ finish, localStreak, onHome }) {
+export function DailyResults({ finish, localStreak, onHome, onArchive }) {
   const [copied, setCopied] = useState(false);
   const [left, setLeft] = useState(untilNextPuzzle());
 
@@ -92,6 +92,12 @@ export function DailyResults({ finish, localStreak, onHome }) {
       <button type="button" onClick={share} className={`${BTN_AMBER} w-full`}>
         {copied ? "■ Copied" : "Share result"}
       </button>
+
+      {onArchive && (
+        <button type="button" onClick={onArchive} className={`${BTN_GHOST} w-full`}>
+          Past puzzles
+        </button>
+      )}
 
       <div className="flex items-center justify-between">
         <p className="font-console text-xs uppercase tracking-[0.2em] text-dim">

@@ -59,6 +59,7 @@ export function useGameSocket() {
   const [dailyStatus, setDailyStatus] = useState(null); // last daily:status payload
   const [dailyFinish, setDailyFinish] = useState(null); // daily:finish payload (results screen)
   const [xpAward, setXpAward] = useState(null); // server xp award (verified) after a match
+  const [dailyArchive, setDailyArchive] = useState(null); // daily:archive payload (past days)
   const seqRef = useRef(0); // monotonic id for stable React keys
 
   useEffect(() => {
@@ -156,6 +157,7 @@ export function useGameSocket() {
     // Daily challenge (solo async). Status feeds the Home card; finish is the
     // results screen payload. Round traffic reuses the live events above.
     socket.on("daily:status", (d) => setDailyStatus(d));
+    socket.on("daily:archive", (a) => setDailyArchive(a && a.days ? a.days : []));
     socket.on("daily:finish", (f) => {
       setDailyFinish(f);
       setDaily(false);
@@ -205,9 +207,13 @@ export function useGameSocket() {
     (idToken) => socketRef.current?.emit("daily:status", idToken ? { idToken } : {}),
     []
   );
-  const startDaily = useCallback((name, idToken) => {
+  const startDaily = useCallback((name, idToken, day) => {
     setDailyFinish(null);
-    socketRef.current?.emit("daily:start", { name, idToken });
+    socketRef.current?.emit("daily:start", { name, idToken, day });
+  }, []);
+  const requestDailyArchive = useCallback((idToken) => {
+    setDailyArchive(null); // show loading on each open
+    socketRef.current?.emit("daily:archive", idToken ? { idToken } : {});
   }, []);
   const answerDaily = useCallback((choice) => socketRef.current?.emit("daily:answer", { choice }), []);
   const leaveDaily = useCallback(() => {
@@ -268,6 +274,8 @@ export function useGameSocket() {
     dailyFinish,
     xpAward,
     clearXpAward,
+    dailyArchive,
+    requestDailyArchive,
     refreshDailyStatus,
     startDaily,
     answerDaily,

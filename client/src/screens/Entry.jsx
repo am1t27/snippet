@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST } from "../ui";
 
 // ---------- Entry: sign in (Google or guest), create or join a room ----------
-export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumber }) {
+export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumber, archiveDay, onArchive }) {
   const isDaily = mode === "daily";
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
   const [name, setName] = useState("");
@@ -82,13 +82,25 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumb
         className={`${BTN_AMBER} w-full`}
       >
         <span aria-hidden="true">▶ </span>
-        {isDaily ? `Play Daily${dailyNumber > 0 ? ` #${dailyNumber}` : ""}` : "Create Room"}
+        {isDaily
+          ? archiveDay
+            ? `Replay ${archiveDay}`
+            : `Play Daily${dailyNumber > 0 ? ` #${dailyNumber}` : ""}`
+          : "Create Room"}
       </button>
 
       {isDaily && (
         <p className="font-console text-xs leading-relaxed text-dim">
-          5 songs across the catalog. Same puzzle for everyone. One shot per day.
+          {archiveDay
+            ? "Archive replay: practice only. No ranking, no streak, no XP."
+            : "5 songs across the catalog. Same puzzle for everyone. One shot per day."}
         </p>
+      )}
+
+      {isDaily && onArchive && !archiveDay && (
+        <button type="button" onClick={onArchive} className={`${BTN_GHOST} w-full`}>
+          Past puzzles
+        </button>
       )}
 
       {!isDaily && <button type="button"

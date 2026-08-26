@@ -18,6 +18,14 @@ snippet, pick the right track from four options — faster answers score more.
 - **Audio**: 30s iTunes previews, played from a random offset, stopped after 10s
   client-side.
 
+## Premium arcade UI
+
+Refined-arcade design system: fluid display type, cascade screen choreography,
+springy buttons, glow washes and film grain, staged timer (amber, orange, red),
+a live WebAudio waveform that dances with each clip, album-art reveal cards,
+and an XP / level / rank progression (CADET through LEGEND) with a level-up
+celebration. Everything respects prefers-reduced-motion.
+
 ## Daily challenge
 
 One frozen 5-song puzzle per UTC day (mixed genres), playable solo by anyone.
@@ -25,6 +33,8 @@ Guests keep a local streak; Google-verified players get one ranked run per day
 on a global per-day leaderboard (first completion wins, timed by the server
 clock). Puzzle rows and results persist in Postgres when DATABASE_URL is set;
 without it the puzzle lives in memory per boot and nothing is ranked.
+Extras: a Past Puzzles archive (replay any frozen day, practice only) and a
+ghost race - today's #1 player's answer timings pace your ranked run.
 
 ## Run it
 ```bash

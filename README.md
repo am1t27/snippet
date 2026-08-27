@@ -3,6 +3,8 @@
 A real-time, server-authoritative music guessing game. Listen to a short song
 snippet, pick the right track from four options — faster answers score more.
 
+Play it now! snippet-flock.vercel.app/
+
 ## Stack
 - **Server** — Node.js + Socket.IO (`server.js`), iTunes preview API (`itunesFetcher.js`)
 - **Client** — React + Vite + Tailwind (`client/`)

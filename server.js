@@ -29,6 +29,7 @@ import {
   applyLives,
   placementFor,
 } from "./gameLogic.js";
+import { ART_STEPS, stepAllowed, artUrlForStep } from "./focusLogic.js";
 import { log } from "./log.js";
 import { initStorage, recordMatch, topScores, addXp } from "./storage.js";
 import { awardFor } from "./xpLogic.js";
@@ -83,6 +84,28 @@ const PHASE = {
 // ----- Rooms registry: code -> room state -----
 const rooms = new Map();
 
+// Focus art tokens: an unguessable id per round, handed only to the players in
+// that room. The room CODE is deliberately not used as an image key - codes are
+// short and were the subject of an earlier enumeration fix.
+const artTokens = new Map(); // token -> { code, round, artworkUrl, trackId }
+// Fetched cover bytes, keyed trackId:step. Small and bounded: a round needs at
+// most six entries and each is a few KB.
+const artCache = new Map();
+const ART_CACHE_MAX = 240;
+
+function dropArtToken(room) {
+  if (room.artToken) artTokens.delete(room.artToken);
+  room.artToken = null;
+}
+
+function mintArtToken(room, artworkUrl, trackId) {
+  dropArtToken(room);
+  const token = randomUUID();
+  artTokens.set(token, { code: room.code, round: room.round, artworkUrl, trackId });
+  room.artToken = token;
+  return token;
+}
+
 // Codes use an unambiguous alphabet (no 0/O/1/I/L).
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 function makeCode() {
@@ -118,6 +141,7 @@ function makeRoom(code) {
     // Knockout bookkeeping. startingPlayers freezes the field size at kickoff
     // so placements stay stable as people are eliminated.
     knockout: { startingPlayers: 0, eliminatedCount: 0 },
+    artToken: null, // Focus: current round's opaque art token
     disconnectGrace: new Map(), // rejoin token -> grace timeout
   };
 }
@@ -412,7 +436,9 @@ function publicState(room) {
     clip: room.settings.clip, // RANDOM | INTRO — client picks the audio offset
     maxPlayers: MAX_PLAYERS,
     isPublic: room.isPublic,
-    audioUrl: inRound ? room.audioUrl : null,
+    // COVER rounds send no audio at all: the cover is the whole clue.
+    audioUrl: inRound && room.settings.clue !== "COVER" ? room.audioUrl : null,
+    clue: room.settings.clue,
     options: inRound ? room.options : null,
     timeRemainingMs:
       room.phase === PHASE.ROUND_PLAYING
@@ -468,6 +494,7 @@ function resetToLobby(room) {
   room.correctArtist = null;
   room.correctTrackName = null;
   room.history = [];
+  dropArtToken(room);
   // room.settings is intentionally preserved so "play again" keeps the host's
   // last choices.
   for (const t of room.disconnectGrace.values()) clearTimeout(t);
@@ -553,12 +580,21 @@ function beginPlaying(room) {
   room.correctArtwork = picked.artworkUrl || null; // reveal-only, like the names
   room.roundStartedAt = Date.now();
 
+  // Focus: mint this round's art token. Under COVER the audio URL is withheld
+  // entirely - handing over the clip would give away the answer through the
+  // other sense and make the artwork pointless.
+  const cover = room.settings.clue === "COVER";
+  if (cover) mintArtToken(room, room.correctArtwork, picked.trackId);
+  else dropArtToken(room);
+
   const roundIndex = room.round - 1;
   // SAFE: no correct answer field.
   io.to(room.code).emit("roundStart", {
     questionValue: questionValueFor(roundIndex, room.settings.format),
     maxSpeedBonus: MAX_SPEED_BONUS,
     roundIndex,
+    artToken: cover ? room.artToken : null,
+    artSteps: cover ? ART_STEPS.length : 0,
   });
   broadcastState(room);
   room.timers.round = setTimeout(() => endRound(room), room.settings.roundMs);
@@ -596,6 +632,7 @@ async function maybeRefreshPool(room) {
 function endRound(room) {
   clearTimers(room);
   room.phase = PHASE.ROUND_REVEAL;
+  dropArtToken(room); // the round is over; the token must not outlive it
 
   const correctName = room.correct ?? null;
   const questionValue = questionValueFor(room.round - 1, room.settings.format);
@@ -800,6 +837,60 @@ const httpServer = http.createServer(async (req, res) => {
   if (allowOrigin) res.setHeader("Access-Control-Allow-Origin", allowOrigin);
 
   // Global leaderboard (only meaningful when DATABASE_URL is configured).
+  // Cover art for a Focus round, at the resolution the round clock allows.
+  // The client never receives an image-host URL: the host encodes the size in
+  // the path, so holding one would let anyone rewrite 8x8 to 300x300 and read
+  // the answer straight off the CDN.
+  if (req.method === "GET" && req.url && req.url.startsWith("/art/")) {
+    const parts = req.url.split("?")[0].split("/").filter(Boolean); // ["art", token, step]
+    const entry = parts.length === 3 ? artTokens.get(parts[1]) : null;
+    const step = parts.length === 3 ? Number(parts[2]) : NaN;
+    const room = entry ? rooms.get(entry.code) : null;
+
+    // Token unknown, room gone, or the round moved on: the token is dead.
+    if (!entry || !room || room.round !== entry.round || room.phase !== PHASE.ROUND_PLAYING) {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "expired" }));
+      return;
+    }
+    const elapsed = Date.now() - room.roundStartedAt;
+    if (!stepAllowed(elapsed, room.settings.roundMs, step)) {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "too sharp" }));
+      return;
+    }
+
+    const key = `${entry.trackId}:${step}`;
+    let buf = artCache.get(key);
+    if (!buf) {
+      const url = artUrlForStep(entry.artworkUrl, step);
+      if (!url) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "no art" }));
+        return;
+      }
+      try {
+        const upstream = await fetch(url);
+        if (!upstream.ok) throw new Error(String(upstream.status));
+        buf = Buffer.from(await upstream.arrayBuffer());
+      } catch {
+        res.writeHead(502, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "art unavailable" }));
+        return;
+      }
+      if (artCache.size >= ART_CACHE_MAX) artCache.delete(artCache.keys().next().value);
+      artCache.set(key, buf);
+    }
+    res.writeHead(200, {
+      "Content-Type": "image/jpeg",
+      "Content-Length": buf.length,
+      // Per-step immutable, but never cached by a shared proxy across rounds.
+      "Cache-Control": "private, max-age=300",
+    });
+    res.end(buf);
+    return;
+  }
+
   if (req.method === "GET" && req.url && req.url.startsWith("/leaderboard")) {
     const rows = await topScores(20);
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -1178,6 +1269,13 @@ io.on("connection", (socket) => {
       return;
     }
     room.loading = false;
+
+    // A cover round needs a cover. Coverage is currently 100%, so this guards
+    // against a future thin ingest rather than a live gap, and it fails through
+    // the existing "not enough songs" path instead of showing a blank tile.
+    if (room.settings.clue === "COVER" && pool) {
+      pool = pool.filter((t) => t.artworkUrl);
+    }
 
     if (!pool || pool.length < room.settings.optionsCount) {
       io.to(room.code).emit("errorMsg", { message: "Not enough songs for these settings. Try another genre or era." });

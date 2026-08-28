@@ -1,4 +1,4 @@
-// XP / level / rank curve — pure and deterministic, shared by the server
+// XP / level / rank curve - pure and deterministic, shared by the server
 // (verified players, persisted) and mirrored on the client for guests
 // (client/src/xp.js is a copy; keep the two in sync).
 //

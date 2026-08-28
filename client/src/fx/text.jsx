@@ -1,7 +1,7 @@
 // Text effects, ported dependency-free:
-//   ScrambleText — Originkit `scrambletext`: characters decode left-to-right
+//   ScrambleText - Originkit `scrambletext`: characters decode left-to-right
 //     through glitch chars with a ░▒▓█ wave cursor.
-//   GlitchText — KokonutUI `glitch-text`: RGB-split clone layers jittering
+//   GlitchText - KokonutUI `glitch-text`: RGB-split clone layers jittering
 //     behind the real text (CSS keyframes carry the motion).
 import { useEffect, useRef, useState } from "react";
 

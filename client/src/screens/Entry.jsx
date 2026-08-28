@@ -138,7 +138,7 @@ export function EntryScreen({ onCreate, onJoin, onQuick, onHome, mode, dailyNumb
 
 // Google Identity Services button. Renders nothing if no client ID is set (then
 // the app is guest-only). The credential is a Google ID token the server
-// re-verifies — the client never trusts it for identity.
+// re-verifies - the client never trusts it for identity.
 function GoogleSignIn({ clientId, onSignIn }) {
   const ref = useRef(null);
   const cbRef = useRef(onSignIn);

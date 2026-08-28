@@ -1,4 +1,4 @@
-// Catalog ingest — the background job that builds the big song pool.
+// Catalog ingest - the background job that builds the big song pool.
 //
 // Two passes, both keyless and free:
 //
@@ -73,7 +73,7 @@ export async function ingestArtists(genreKeys = GENRE_KEYS) {
         continue;
       }
       const raw = await songsForArtist(id);
-      // Tag every track with the seeding family — this is what places a
+      // Tag every track with the seeding family - this is what places a
       // Hip-Hop/Rap-labelled Pop Smoke track into `drill`.
       const rows = toCatalogRows(raw, [genre]);
       written += await upsertTracks(rows);

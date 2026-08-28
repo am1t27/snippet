@@ -1,4 +1,4 @@
-// Local player profile stats (localStorage). Purely client-side — a lightweight
+// Local player profile stats (localStorage). Purely client-side - a lightweight
 // "My profile" without accounts. (A server-backed global profile would live in
 // storage.js behind DATABASE_URL.)
 

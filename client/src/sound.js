@@ -87,7 +87,7 @@ export function play(name) {
     try {
       fn(c);
     } catch {
-      /* audio glitch — never fatal */
+      /* audio glitch - never fatal */
     }
   }
 }

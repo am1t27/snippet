@@ -4,8 +4,11 @@
 // a socket, a clock, or the network. The client imports nothing from here: it
 // only ever asks our own proxy for a step index.
 
-// Six rungs. The numbers are real image sizes, and the ladder only sharpens.
-export const ART_STEPS = [8, 14, 24, 44, 90, 300];
+// Ten rungs. The numbers are real image sizes, and the ladder only sharpens.
+// The first half grows gently (8 to 30px) so the cover stays a proper mosaic
+// through the early round instead of snapping into focus, and the full-size
+// image only lands on the final rung.
+export const ART_STEPS = [8, 12, 16, 22, 30, 42, 60, 90, 140, 300];
 
 // The image host we are willing to fetch from. Anything else is refused so a
 // crafted artwork value can never turn the proxy into an open relay.

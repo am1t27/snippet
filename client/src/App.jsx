@@ -1,10 +1,10 @@
-// App — React client for the multiplayer music guessing game.
+// App - React client for the multiplayer music guessing game.
 //
-// Design: "minimalist arcade" — bone on void, one amber CRT phosphor accent,
+// Design: "minimalist arcade" - bone on void, one amber CRT phosphor accent,
 // Space Mono scoreboard, hairline rules, zero radius. The signature is the CRT
 // timer/score. Green/red appear ONLY on reveal to mark answers (+ glyphs).
 //
-// IMPORTANT: presentation only. The socket/data contract is untouched — every
+// IMPORTANT: presentation only. The socket/data contract is untouched - every
 // prop, event, and server field is wired exactly as before. Screens live in
 // ./screens/*, shared tokens + reusable bits in ./ui.jsx.
 
@@ -62,7 +62,7 @@ export default function App() {
     try {
       // A blob: URL, not a data: one. Our CSP allows `media-src 'self' https:
       // blob:` and deliberately does not allow data:, so a data: source is
-      // blocked before it ever reaches the element — silently, because both
+      // blocked before it ever reaches the element - silently, because both
       // failure paths below swallow it. That cost mobile the whole point of
       // priming: every round fell back to the manual "Play clip" tap.
       const url = silentWavUrl();
@@ -79,7 +79,7 @@ export default function App() {
         done();
       }
     } catch {
-      /* ignore — per-round tap fallback still covers playback */
+      /* ignore - per-round tap fallback still covers playback */
     }
   };
 
@@ -109,7 +109,7 @@ export default function App() {
   const firstPlayer = players.find((p) => !p.spectator) || null;
   const isHost = Boolean(firstPlayer && firstPlayer.id === myId);
 
-  // Our own guess for the round (our choice — NOT the answer). Reset each round.
+  // Our own guess for the round (our choice - NOT the answer). Reset each round.
   const [myGuess, setMyGuess] = useState(null);
   const round = state?.round ?? 0;
   useEffect(() => {
@@ -163,7 +163,7 @@ export default function App() {
       // Verified: the payload's award is authoritative.
       if (dailyFinish.xp.leveledUp) setLocalAward(dailyFinish.xp);
     } else if (!dailyFinish.practice) {
-      // Guests mirror the curve locally — but practice (archive) runs never
+      // Guests mirror the curve locally - but practice (archive) runs never
       // earn XP, matching the server's rule for verified players.
       const a = xpAwardFor(getXpLocal(), dailyFinish.score);
       setXpLocal(a.total);
@@ -256,7 +256,7 @@ export default function App() {
       sound.play("wrong");
       setAnnounce("Wrong answer.");
     } else {
-      setAnnounce("Time up — no answer.");
+      setAnnounce("Time up - no answer.");
     }
   }, [reveal, myId]);
 

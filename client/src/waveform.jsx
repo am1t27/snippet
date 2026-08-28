@@ -1,4 +1,4 @@
-// Live audio waveform — the music drives the interface.
+// Live audio waveform - the music drives the interface.
 //
 // A WebAudio AnalyserNode taps the app's single persistent <audio> element and
 // 48 frequency bars follow it in real time via requestAnimationFrame writing
@@ -15,7 +15,7 @@ const BAR_COUNT = 48;
 const GRAPH_KEY = "__snippetAnalyser";
 
 // Build (or reuse) the audio graph for this element. Returns null when
-// WebAudio isn't available — callers fall back to the static strip.
+// WebAudio isn't available - callers fall back to the static strip.
 function analyserFor(el) {
   if (!el) return null;
   if (el[GRAPH_KEY]) return el[GRAPH_KEY];
@@ -32,7 +32,7 @@ function analyserFor(el) {
     el[GRAPH_KEY] = { ctx, analyser };
     return el[GRAPH_KEY];
   } catch {
-    return null; // tainted source or unsupported — static fallback
+    return null; // tainted source or unsupported - static fallback
   }
 }
 

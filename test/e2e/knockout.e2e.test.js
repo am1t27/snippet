@@ -1,5 +1,5 @@
 // End-to-end knockout tests: a real server process, real Socket.IO clients,
-// real rounds. These cover what unit tests cannot — the round loop, the
+// real rounds. These cover what unit tests cannot - the round loop, the
 // elimination broadcast, the start guards, and the end condition.
 //
 // Answers are chosen at random, which is deliberate: every invariant asserted

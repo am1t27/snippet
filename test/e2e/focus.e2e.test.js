@@ -66,7 +66,7 @@ describe("Focus cover rounds", () => {
     // The round carries an opaque token and the ladder length, nothing else.
     expect(typeof started.artToken).toBe("string");
     expect(started.artToken.length).toBeGreaterThan(20);
-    expect(started.artSteps).toBe(6);
+    expect(started.artSteps).toBe(10);
 
     // Wait for the playing state so the round clock is running.
     await new Promise((res) => setTimeout(res, 600));

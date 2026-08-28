@@ -44,7 +44,7 @@ describe("sanitizeSettings", () => {
       knockout: "SLOWEST",
       clue: "AUDIO",
     });
-    // "rap" is no longer its own family — it clamps to the hip-hop default.
+    // "rap" is no longer its own family - it clamps to the hip-hop default.
     expect(sanitizeSettings({ genre: "rap" }).genre).toBe("hip-hop");
   });
 

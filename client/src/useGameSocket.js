@@ -1,4 +1,4 @@
-// useGameSocket — single source of truth for all game state, fed only by the
+// useGameSocket - single source of truth for all game state, fed only by the
 // server over Socket.IO.
 //
 // SECURITY / FAIRNESS CONTRACT:
@@ -28,7 +28,7 @@ function saveSession(s) {
   try {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
   } catch {
-    /* storage blocked — rejoin just won't persist */
+    /* storage blocked - rejoin just won't persist */
   }
 }
 function clearSession() {
@@ -91,7 +91,7 @@ export function useGameSocket() {
       if (token) saveSession({ code, token });
     });
 
-    // The held slot was gone (room closed, grace expired) — forget the session.
+    // The held slot was gone (room closed, grace expired) - forget the session.
     socket.on("rejoinFailed", () => clearSession());
 
     // The authoritative state snapshot. Receiving any state ends a loading
@@ -144,7 +144,7 @@ export function useGameSocket() {
 
     // Room membership notices (Feature 5) -> bottom toast.
     socket.on("playerLeft", (d) =>
-      setNotice(d?.held ? `${d?.name || "A player"} dropped — can rejoin` : `${d?.name || "A player"} left`)
+      setNotice(d?.held ? `${d?.name || "A player"} dropped - can rejoin` : `${d?.name || "A player"} left`)
     );
     socket.on("newHost", (d) => setNotice(`${d?.name || "Someone"} is now host`));
     socket.on("waitingForPlayers", () => setNotice("Waiting for more players…"));

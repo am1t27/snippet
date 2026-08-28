@@ -1,4 +1,4 @@
-// Pure, side-effect-free game logic — extracted from server.js so it can be
+// Pure, side-effect-free game logic - extracted from server.js so it can be
 // unit-tested without spinning up a server or hitting the network. Nothing here
 // touches sockets, timers, or rooms; it's all deterministic given its inputs
 // (except shuffle/buildRound, which use Math.random by design).
@@ -13,7 +13,9 @@ export const MAX_SPEED_BONUS = 350;
 
 // ----- Host-configurable settings (allowlists; first item is the default) -----
 export const ROUND_CHOICES = [10, 5, 15];
-export const TIMER_CHOICES = [10000, 7500, 15000];
+// 20s exists mainly for Focus: reading a sharpening cover needs more runway
+// than naming a clip. Any mode may use it; the default stays 10s.
+export const TIMER_CHOICES = [10000, 7500, 15000, 20000];
 export const OPTION_CHOICES = [4, 3, 6];
 export const MODE_CHOICES = ["TITLE", "ARTIST"];
 // "new" = last ~3 years (resolved dynamically in the fetcher); the rest are

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { EYEBROW, PANEL, BTN_AMBER, BTN_GHOST, Avatar, Chat } from "../ui";
 
 // Genre options the host can pick before starting. Values mirror the server's
-// catalog/genres.js registry (its GENRE_KEYS allowlist) — the server
+// catalog/genres.js registry (its GENRE_KEYS allowlist) - the server
 // re-validates, so an out-of-sync entry degrades to the default, never breaks.
 const GENRES = [
   { label: "HIP-HOP/RAP", value: "hip-hop" },
@@ -27,6 +27,7 @@ const TIMER_OPTS = [
   { label: "10s", value: 10000 },
   { label: "7.5s", value: 7500 },
   { label: "15s", value: 15000 },
+  { label: "20s", value: 20000 },
 ];
 const OPTION_OPTS = [
   { label: "4", value: 4 },
@@ -75,9 +76,11 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
   const [genre, setGenre] = useState(GENRES[0].value);
   // Match settings (host only). Defaults mirror the server's DEFAULT_SETTINGS;
   // `clip` is seeded from the Home card the host arrived through (Heardle=INTRO).
+  // Reading a sharpening cover needs more runway than naming a clip, so a
+  // Focus lobby starts on the 20s timer. The host can still change it.
   const [settings, setSettings] = useState({
     rounds: 10,
-    roundMs: 10000,
+    roundMs: cluePref === "COVER" ? 20000 : 10000,
     optionsCount: 4,
     mode: "TITLE",
     decade: "all",
@@ -180,7 +183,20 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
             </>
           )}
           <SettingRow label="Mode" options={MODE_OPTS} value={settings.mode} onChange={setField("mode")} />
-          <SettingRow label="Clue" options={CLUE_OPTS} value={settings.clue} onChange={setField("clue")} />
+          <SettingRow
+            label="Clue"
+            options={CLUE_OPTS}
+            value={settings.clue}
+            onChange={(v) =>
+              setSettings((s) => ({
+                ...s,
+                clue: v,
+                // Switching to Cover bumps a still-default 10s timer to 20s;
+                // a timer the host set deliberately is left alone.
+                roundMs: v === "COVER" && s.roundMs === 10000 ? 20000 : s.roundMs,
+              }))
+            }
+          />
           {/* A cover round plays nothing, so the clip start point is moot. */}
           {settings.clue !== "COVER" && (
             <SettingRow label="Clip" options={CLIP_OPTS} value={settings.clip} onChange={setField("clip")} />

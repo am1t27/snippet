@@ -3,7 +3,7 @@
 // This is deliberately simple: it tokenizes on non-alphanumerics, normalizes
 // common leet substitutions, and masks any token whose normalized form is on a
 // small blocklist. It will NOT catch every variant (embedded or creatively
-// spaced) — it is a courtesy filter, not a guarantee. Keep expectations modest.
+// spaced) - it is a courtesy filter, not a guarantee. Keep expectations modest.
 
 const BLOCKLIST = new Set([
   "fuck", "fucker", "fucking", "shit", "bitch", "cunt", "asshole", "dick",

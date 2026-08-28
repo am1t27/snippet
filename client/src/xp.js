@@ -1,4 +1,4 @@
-// Client mirror of the server's xpLogic.js — keep the two in sync.
+// Client mirror of the server's xpLogic.js - keep the two in sync.
 // Guests earn XP on this device only; verified players get the server's
 // authoritative award and this module just renders it.
 

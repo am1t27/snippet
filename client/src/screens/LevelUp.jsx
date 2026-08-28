@@ -1,4 +1,4 @@
-// Level-up celebration — full-screen overlay, one per award, dismissed by tap.
+// Level-up celebration - full-screen overlay, one per award, dismissed by tap.
 // Typographic burst only (✦), per the no-emoji rule.
 import { EYEBROW, BTN_AMBER } from "../ui";
 

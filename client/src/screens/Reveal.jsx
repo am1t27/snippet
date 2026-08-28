@@ -10,7 +10,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
   const avatarOf = {};
   for (const p of players ?? []) avatarOf[p.id] = p.avatar;
   const total = reveal?.totalRounds ?? null; // null under knockout: no fixed length
-  const track = reveal?.track ?? null; // { trackName, artistName } — always shown
+  const track = reveal?.track ?? null; // { trackName, artistName } - always shown
   const isArtist = reveal?.mode === "ARTIST";
   const leaderboard =
     reveal?.leaderboard ??
@@ -79,7 +79,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
             <p className={EYEBROW}>The answer</p>
             <p className="mt-2 font-marquee text-lg font-black uppercase tracking-tight text-bone">
               <span className={isArtist ? "text-amber" : ""}>{track.artistName}</span>
-              <span className="text-dim"> — </span>
+              <span className="text-dim"> - </span>
               <span className={isArtist ? "" : "text-amber"}>{track.trackName}</span>
             </p>
           </div>
@@ -147,7 +147,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
                   )}
                 </span>
                 <span className="flex items-center gap-4 font-console text-sm tabular-nums">
-                  <span className="text-dim">{answered ? `${r.answerTimeSeconds}s` : "—"}</span>
+                  <span className="text-dim">{answered ? `${r.answerTimeSeconds}s` : "-"}</span>
                   <span className={r.correct ? "text-good" : "text-dim"}>+{r.pointsEarned}</span>
                 </span>
               </li>

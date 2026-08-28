@@ -161,7 +161,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, elim
       {state.clue === "COVER" ? (
         <CoverArt
           token={state.artToken ?? roundMeta?.artToken ?? null}
-          steps={roundMeta?.artSteps || 6}
+          steps={roundMeta?.artSteps || 10}
           timeRemainingMs={state.timeRemainingMs}
           roundMs={state.roundMs ?? 10000}
         />
@@ -174,7 +174,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, elim
           onClick={retryAudio}
           className="w-full border border-amber px-5 py-3 font-console text-sm uppercase tracking-[0.2em] text-amber transition-colors hover:bg-amber hover:text-black"
         >
-          Audio didn't load — retry
+          Audio didn't load - retry
         </button>
       )}
 
@@ -222,7 +222,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, elim
       ) : (
         !hasGuessed && (
           <p className={`${EYEBROW} text-center`}>
-            {isArtist ? "Pick the artist" : "Pick the track"} — faster = more points · keys 1-
+            {isArtist ? "Pick the artist" : "Pick the track"} - faster = more points · keys 1-
             {state.options.length}
           </p>
         )
@@ -233,7 +233,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, elim
   );
 }
 
-// The CRT scoreboard — the design signature.
+// The CRT scoreboard - the design signature.
 //
 // Owns the countdown itself rather than taking `seconds` as a prop: the timer
 // ticks 4x/sec, and if Playing held that state every tick would re-render the
@@ -296,7 +296,7 @@ function TimeCounter({ timeRemainingMs, round, total = 10, ghost = null }) {
 // ---------- Display-only countdown ----------
 // Seeds from the server's timeRemainingMs at the start of each round and ticks
 // down locally for smooth display. The server is still the only authority on
-// scoring — this number never leaves the client.
+// scoring - this number never leaves the client.
 function useCountdown(timeRemainingMs, round) {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
@@ -310,38 +310,33 @@ function useCountdown(timeRemainingMs, round) {
   return seconds;
 }
 
-// Honour the OS reduced-motion preference for the step crossfade.
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const q = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(q.matches);
-    const on = () => setReduced(q.matches);
-    q.addEventListener("change", on);
-    return () => q.removeEventListener("change", on);
-  }, []);
-  return reduced;
-}
-
 // The Focus clue: the album cover as a resolution ladder. Every step is a
 // separate request to our own proxy, which refuses any step the round clock has
 // not reached, so there is no sharper image sitting on the client to uncover.
+//
+// Two-stage rendering: `allowed` is what the clock permits, `shown` is the last
+// rung whose bytes have actually arrived. Each newly allowed rung is preloaded
+// off-screen and promoted only on load, into one stable <img> element. That is
+// what keeps the frame and the picture in sync: nothing bordered ever renders
+// without pixels inside it, on mount or on any step change.
 function CoverArt({ token, steps, timeRemainingMs, roundMs }) {
-  const [step, setStep] = useState(0);
+  const [allowed, setAllowed] = useState(0);
+  const [shown, setShown] = useState(-1); // -1: nothing loaded yet
   const startedAt = useRef(0);
-  const reduced = usePrefersReducedMotion();
+  const base = import.meta.env.VITE_SOCKET_URL || "";
 
-  // Seed the local clock from the server's remaining time whenever a new round
-  // token arrives, then run the ladder locally. The server broadcasts state on
-  // events, not on a tick, so a round where nobody guesses would otherwise
-  // never advance the reveal at all.
+  // Seed the local clock from the server's remaining time once per round
+  // token, then run the ladder locally. The server broadcasts state on events,
+  // not on a tick, so a round where nobody guesses would otherwise never
+  // advance the reveal at all.
   useEffect(() => {
     if (!token) return;
     const seeded = Math.max(0, roundMs - (timeRemainingMs ?? roundMs));
     startedAt.current = Date.now() - seeded;
-    setStep(0);
-    // timeRemainingMs is read once per token on purpose: it seeds the clock and
-    // must not restart it every time a broadcast lands mid-round.
+    setAllowed(0);
+    setShown(-1);
+    // timeRemainingMs seeds the clock once per token; a mid-round broadcast
+    // must not restart it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -350,30 +345,46 @@ function CoverArt({ token, steps, timeRemainingMs, roundMs }) {
     const tick = () => {
       const elapsed = Date.now() - startedAt.current;
       const next = Math.min(steps - 1, Math.floor(elapsed / (roundMs / steps)));
-      // Only ever sharpens: a late update must never re-blur a cover the player
-      // has already seen.
-      setStep((s) => (next > s ? next : s));
+      setAllowed((a) => (next > a ? next : a)); // only ever sharpens
     };
     tick();
     const id = setInterval(tick, 150);
     return () => clearInterval(id);
   }, [token, steps, roundMs]);
 
+  // Preload the newly allowed rung; promote it only when its bytes are in.
+  // The visible <img> then swaps src against a warm cache, so the change is a
+  // single repaint with no empty frame.
+  useEffect(() => {
+    if (!token || allowed < 0) return;
+    let alive = true;
+    const img = new Image();
+    img.onload = () => {
+      if (alive) setShown((s) => (allowed > s ? allowed : s));
+    };
+    img.src = `${base}/art/${token}/${allowed}`;
+    return () => {
+      alive = false;
+    };
+  }, [token, allowed, base]);
+
   if (!token) return null;
-  const base = import.meta.env.VITE_SOCKET_URL || "";
   return (
     <div className="grid place-items-center">
-      <img
-        key={`${token}-${step}`}
-        src={`${base}/art/${token}/${step}`}
-        alt="Album cover, partly revealed"
-        width="320"
-        height="320"
-        className={`h-[min(70vw,20rem)] w-[min(70vw,20rem)] border border-rule bg-void object-cover ${
-          reduced ? "" : "animate-popin"
-        }`}
-        style={{ imageRendering: "pixelated" }}
-      />
+      {shown < 0 ? (
+        // Reserve the exact footprint but draw no frame: the border belongs to
+        // the image and must never appear ahead of it.
+        <div className="h-[min(70vw,20rem)] w-[min(70vw,20rem)]" aria-hidden="true" />
+      ) : (
+        <img
+          src={`${base}/art/${token}/${shown}`}
+          alt="Album cover, partly revealed"
+          width="320"
+          height="320"
+          className="h-[min(70vw,20rem)] w-[min(70vw,20rem)] border border-rule bg-void object-cover"
+          style={{ imageRendering: "pixelated" }}
+        />
+      )}
     </div>
   );
 }

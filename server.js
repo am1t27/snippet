@@ -1,4 +1,4 @@
-// Server-authoritative multiplayer music guessing game — MULTI-ROOM.
+// Server-authoritative multiplayer music guessing game - MULTI-ROOM.
 //
 // Each room (4-char code) is an isolated game with its own state, players, and
 // timers. The server is the only source of truth: it holds the correct answer,
@@ -58,14 +58,14 @@ const REVEAL_MS = 3000; // pause on the reveal screen before next round
 const KNOCKOUT_REVEAL_MS = 4500; // longer hold: an elimination needs to land
 const EARLY_END_GRACE_MS = 3000; // keep the clip playing this long after everyone answers
 // Chat + reactions. Reactions are a fixed whitelist of arcade-style call-outs
-// (typographic, not emoji — keeps the §12 design rule) floated over the game.
+// (typographic, not emoji - keeps the §12 design rule) floated over the game.
 // Match settings, scoring, and round-building live in ./gameLogic.js (imported
 // above) so they can be unit-tested without a running server.
 const REACTIONS = ["GG", "WOW", "!!", "??", "★", "♥"];
 const CHAT_MAX_LEN = 200;
 
 // Shared secret for the manual catalog refresh (POST /catalog/refresh). Unset
-// (the default) disables the route entirely — see the handler.
+// (the default) disables the route entirely - see the handler.
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 
 // Google OAuth (optional). If GOOGLE_CLIENT_ID is unset, sign-in is disabled and
@@ -126,7 +126,7 @@ function makeRoom(code) {
     usedTrackIds: new Set(),
     audioUrl: null,
     options: [],
-    correct: null, // SERVER-ONLY — the gradable answer (title or artist)
+    correct: null, // SERVER-ONLY - the gradable answer (title or artist)
     roundStartedAt: 0,
     guesses: new Map(), // socketId -> { option, elapsedMs }
     settings: { ...DEFAULT_SETTINGS }, // host-chosen, validated at startGame
@@ -432,8 +432,8 @@ function publicState(room) {
     format: room.settings.format,
     knockout: room.settings.knockout,
     roundMs: room.settings.roundMs, // round length, so the client bar matches
-    mode: room.settings.mode, // TITLE | ARTIST — for client labels only
-    clip: room.settings.clip, // RANDOM | INTRO — client picks the audio offset
+    mode: room.settings.mode, // TITLE | ARTIST - for client labels only
+    clip: room.settings.clip, // RANDOM | INTRO - client picks the audio offset
     maxPlayers: MAX_PLAYERS,
     isPublic: room.isPublic,
     // COVER rounds send no audio at all: the cover is the whole clue.
@@ -505,7 +505,7 @@ function resetToLobby(room) {
   for (const t of room.disconnectGrace.values()) clearTimeout(t);
   room.disconnectGrace.clear();
   // Drop anyone still held disconnected instead of resurrecting them as a
-  // permanent "connected" ghost — a ghost would keep allGuessed() from ever
+  // permanent "connected" ghost - a ghost would keep allGuessed() from ever
   // being true (early round-end never fires), occupy a MAX_PLAYERS slot, and
   // stop the room from ever being deleted once the real players leave.
   const prevHostId = [...room.players.keys()].find((id) => !room.players.get(id).spectator);
@@ -907,7 +907,7 @@ const httpServer = http.createServer(async (req, res) => {
   // fresh chart sweep doesn't have to wait for a restart or the next tick.
   // Gated on ADMIN_TOKEN: unset means the route doesn't exist at all (falls
   // through to the health handler), so an unconfigured deploy exposes no admin
-  // surface to probe. Answers 202 immediately — the ingest takes minutes and
+  // surface to probe. Answers 202 immediately - the ingest takes minutes and
   // runs detached; poll GET /catalog to watch the totals move.
   if (req.method === "POST" && req.url && req.url.startsWith("/catalog/refresh") && ADMIN_TOKEN) {
     if (!adminAuthorized(req)) {
@@ -936,7 +936,7 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
-  // Catalog health: totals per genre. Same exposure judgment as /leaderboard —
+  // Catalog health: totals per genre. Same exposure judgment as /leaderboard -
   // aggregate counts only, nothing operational.
   if (req.method === "GET" && req.url && req.url.startsWith("/catalog")) {
     const stats = await catalogStats().catch(() => ({ backend: "none", total: 0, byGenre: {} }));
@@ -945,7 +945,7 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
-  // Health check only — deliberately no room/player counts, so operational
+  // Health check only - deliberately no room/player counts, so operational
   // detail isn't exposed to arbitrary callers.
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ ok: true }));
@@ -954,7 +954,7 @@ const httpServer = http.createServer(async (req, res) => {
 // Socket.IO handshake Origin enforcement. Browsers don't apply CORS to
 // WebSocket, so cors.origin alone can't stop other sites from opening a socket.
 // This rejects the handshake server-side when the Origin isn't in the allowlist.
-// Requests with no Origin header (non-browser clients, health checks) pass —
+// Requests with no Origin header (non-browser clients, health checks) pass -
 // Origin is only meaningful from browsers, which is exactly the cross-site abuse
 // this blocks. It is NOT a hard auth boundary (Origin is spoofable off-browser);
 // the per-IP/room caps remain the real backstop.
@@ -975,7 +975,7 @@ const io = new Server(httpServer, {
 
 if (IS_PROD && Array.isArray(CLIENT_ORIGIN) && CLIENT_ORIGIN.length === 0) {
   log.warn(
-    "CLIENT_ORIGIN is unset in production — cross-origin clients are blocked (fail closed). Set CLIENT_ORIGIN to your web origin(s), e.g. https://yourapp.vercel.app"
+    "CLIENT_ORIGIN is unset in production - cross-origin clients are blocked (fail closed). Set CLIENT_ORIGIN to your web origin(s), e.g. https://yourapp.vercel.app"
   );
 }
 
@@ -1025,7 +1025,7 @@ maybeInitSentry();
 initStorage(log);
 
 // Song catalog: init the store, then kick off the background ingest (first run
-// builds the pool; later runs just refresh charts). Never blocks the server —
+// builds the pool; later runs just refresh charts). Never blocks the server -
 // until the catalog is warm, matches are served by the live iTunes fallback.
 initCatalog(log).then(() => {
   if (process.env.CATALOG_INGEST !== "off") scheduleIngest();
@@ -1058,7 +1058,7 @@ io.on("connection", (socket) => {
     return;
   }
 
-  // --- Daily challenge (solo async) — handlers live in daily.js ---
+  // --- Daily challenge (solo async) - handlers live in daily.js ---
   registerDaily(socket, { resolveIdentity, rateLimited });
 
   // --- createRoom: open a new room and become host ---
@@ -1203,7 +1203,7 @@ io.on("connection", (socket) => {
     socket.emit("roomJoined", { code: room.code, id: socket.id, token, spectator: target.spectator }); // SAFE
     // Re-send the current phase's payload so the rejoiner's UI is correct.
     if (room.phase === PHASE.ROUND_REVEAL && room.lastReveal) {
-      socket.emit("reveal", room.lastReveal); // SAFE — round is over, answer is public
+      socket.emit("reveal", room.lastReveal); // SAFE - round is over, answer is public
     }
     if (room.phase === PHASE.GAME_OVER) {
       // Same ordering the rest of the room already received: under knockout
@@ -1243,7 +1243,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // The host's requested settings are validated/clamped here — never trusted.
+    // The host's requested settings are validated/clamped here - never trusted.
     // Sanitized BEFORE the loading state so a rejected knockout lineup never
     // leaves the room stuck on a loading screen.
     room.settings = sanitizeSettings(payload);

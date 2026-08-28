@@ -1,4 +1,4 @@
-// GenreMarquee — the arcade-cabinet marquee strip: a slow ticker of the
+// GenreMarquee - the arcade-cabinet marquee strip: a slow ticker of the
 // playable genres. Content-bearing (these are the real catalog genres), quiet
 // by design: small mono type, dim ink, one pink star as the only accent.
 

@@ -1,14 +1,14 @@
-// Genre registry — the single source of truth for what "genre" means across the
+// Genre registry - the single source of truth for what "genre" means across the
 // ingest pipeline, the server settings allowlist, and the client's lobby picker.
 //
 // Two kinds of membership exist, because Apple's `primaryGenreName` is coarse:
 //
-//   1. MATCHED — the family is recognisable from Apple's own genre label
+//   1. MATCHED - the family is recognisable from Apple's own genre label
 //      (Pop, Country, Bollywood, …). Any ingested track whose label matches
 //      the family regex joins that family automatically.
-//   2. SEEDED — the family has no distinct Apple label. Drill and trap are two
-//      DIFFERENT scenes (trap: Atlanta — Future/Migos lineage; drill: Chicago,
-//      then UK/Brooklyn — Pop Smoke/Central Cee lineage) but Apple files both
+//   2. SEEDED - the family has no distinct Apple label. Drill and trap are two
+//      DIFFERENT scenes (trap: Atlanta - Future/Migos lineage; drill: Chicago,
+//      then UK/Brooklyn - Pop Smoke/Central Cee lineage) but Apple files both
 //      under "Hip-Hop/Rap", so their pools can only be built from artists known
 //      to belong to each scene. Tracks pulled through a seeded family's artist
 //      list are tagged with that family key at ingest.
@@ -17,8 +17,8 @@
 // `hip-hop`), which is why rows carry a `genreKeys` array, not one genre column.
 
 // Every family: { label, match, seedArtists }.
-//   match       — RegExp against Apple's primaryGenreName. null = seeded-only.
-//   seedArtists — names used by the deep ingest to pull each artist's catalogue
+//   match       - RegExp against Apple's primaryGenreName. null = seeded-only.
+//   seedArtists - names used by the deep ingest to pull each artist's catalogue
 //                 (up to 200 tracks per artist). Also the ONLY source for
 //                 seeded-only families.
 export const GENRE_FAMILIES = {
@@ -39,7 +39,7 @@ export const GENRE_FAMILIES = {
   },
   drill: {
     label: "Drill",
-    match: null, // Apple files drill under Hip-Hop/Rap — seeded only.
+    match: null, // Apple files drill under Hip-Hop/Rap - seeded only.
     seedArtists: [
       "Pop Smoke", "Central Cee", "Fivio Foreign", "Headie One", "Digga D",
       "Sheff G", "Kay Flock", "Russ Millions", "Unknown T", "Bandmanrill",
@@ -49,7 +49,7 @@ export const GENRE_FAMILIES = {
   },
   trap: {
     label: "Trap",
-    match: null, // Same storage problem as drill — seeded only.
+    match: null, // Same storage problem as drill - seeded only.
     seedArtists: [
       "Future", "Young Thug", "Migos", "Gucci Mane", "Playboi Carti", "Lil Uzi Vert",
       "2 Chainz", "Metro Boomin", "Rae Sremmurd", "Offset", "Quavo", "Lil Yachty",
@@ -126,7 +126,7 @@ export const GENRE_KEYS = Object.keys(GENRE_FAMILIES);
 export const MATCHED_GENRE_KEYS = GENRE_KEYS.filter((k) => GENRE_FAMILIES[k].match);
 
 // Which families an Apple genre label belongs to. Seeded-only families are never
-// returned here — they are tagged at ingest time from the seeding artist.
+// returned here - they are tagged at ingest time from the seeding artist.
 export function familiesForAppleGenre(appleGenre) {
   const name = String(appleGenre ?? "");
   if (!name) return [];

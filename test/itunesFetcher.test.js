@@ -75,7 +75,7 @@ describe("fetchSongs (mocked iTunes)", () => {
 
   it("drops bare genre-word titles and collapses near-duplicate titles (drill/trap fix)", async () => {
     const DRILLY = [
-      // 20 songs literally titled "Drill" + case/paren variants — all one title.
+      // 20 songs literally titled "Drill" + case/paren variants - all one title.
       ...Array.from({ length: 20 }, (_, i) => ({ trackId: 100 + i, trackName: "Drill", artistName: "A" + i, previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" })),
       { trackId: 200, trackName: "DRILL", artistName: "B", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },
       { trackId: 201, trackName: "Drill (Instrumental)", artistName: "C", previewUrl: "u", trackTimeMillis: 30000, primaryGenreName: "Hip-Hop/Rap" },

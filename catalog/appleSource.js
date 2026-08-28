@@ -2,10 +2,10 @@
 //
 // Two public, keyless Apple endpoints do all the work:
 //
-//   1. Marketing Tools RSS  — https://rss.marketingtools.apple.com/api/v2/...
+//   1. Marketing Tools RSS  - https://rss.marketingtools.apple.com/api/v2/...
 //      Per-storefront "most played" charts (Apple Music streaming, max 100 per
 //      feed). Gives track IDs + artist, but NO preview URL.
-//   2. iTunes lookup/search — https://itunes.apple.com/{lookup,search}
+//   2. iTunes lookup/search - https://itunes.apple.com/{lookup,search}
 //      Hydrates those IDs into full track records WITH previewUrl,
 //      primaryGenreName and releaseDate, 100 IDs per request. Also expands one
 //      artist into up to 200 of their tracks.
@@ -13,7 +13,7 @@
 // WHY BOTH: the iTunes *search* endpoint is hard-capped at ~200 results per term
 // and ignores `offset`, so no amount of searching reaches a large pool. Charts
 // (breadth: ~175 storefronts) plus artist lookup (depth: 200 tracks per artist)
-// have no such ceiling — that is the whole point of the ingest.
+// have no such ceiling - that is the whole point of the ingest.
 //
 // Every request is paced. These are unmetered public endpoints and Apple
 // rate-limits aggressively when hammered; the ingest is a background job, so
@@ -50,7 +50,7 @@ async function getJson(url, { pace = REQUEST_PACE_MS, retries = MAX_RETRIES } = 
         await sleep(pace);
         return body;
       }
-      // 403/429 mean we are going too fast — back off before the next attempt.
+      // 403/429 mean we are going too fast - back off before the next attempt.
       if (res.status === 403 || res.status === 429) await sleep(pace * (attempt + 2) * 4);
       else if (res.status >= 400 && res.status < 500) return null; // 404 etc: no retry
     } catch {
@@ -96,7 +96,7 @@ export async function artistIdFor(name) {
 }
 
 // Every track iTunes will return for one artist (its own 200-row ceiling, but
-// per ARTIST rather than per search term — that is where catalogue depth and
+// per ARTIST rather than per search term - that is where catalogue depth and
 // older releases come from).
 export async function songsForArtist(artistId, limit = 200) {
   const url = `${ITUNES_LOOKUP}?id=${encodeURIComponent(artistId)}&entity=song&limit=${Math.min(200, limit)}`;

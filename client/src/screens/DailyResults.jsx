@@ -1,4 +1,4 @@
-// Daily challenge results — score, glyph grid, streak, board, share.
+// Daily challenge results - score, glyph grid, streak, board, share.
 // Rendered from the server's daily:finish payload; guests see their local
 // streak, verified players see their global rank.
 import { useEffect, useState } from "react";
@@ -34,7 +34,7 @@ export function DailyResults({ finish, localStreak, onHome, onArchive }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* clipboard blocked — the text is visible on screen anyway */
+      /* clipboard blocked - the text is visible on screen anyway */
     }
   };
 
@@ -62,7 +62,7 @@ export function DailyResults({ finish, localStreak, onHome, onArchive }) {
         <div className={`${PANEL} px-4 py-3`}>
           <p className={EYEBROW}>{finish.ranked ? "Your rank" : "Ranked"}</p>
           <p className="mt-1 font-console text-xl tabular-nums text-bone">
-            {finish.ranked && finish.myRank ? `#${finish.myRank}` : finish.ranked ? "—" : "Guests: no"}
+            {finish.ranked && finish.myRank ? `#${finish.myRank}` : finish.ranked ? "-" : "Guests: no"}
           </p>
         </div>
       </div>

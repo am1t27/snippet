@@ -11,7 +11,7 @@ export const MIN_DURATION_MS = 20 * 1000; // same floor the live fetcher uses
 
 // Non-original versions. Verified against live iTunes data: track releaseDate
 // stays the ORIGINAL song date even on compilations ("The Essential …",
-// "Number Ones" both report Billie Jean as 1982) — the versions that DO carry a
+// "Number Ones" both report Billie Jean as 1982) - the versions that DO carry a
 // misleading date are exactly these: live cuts, re-records, karaoke/tribute
 // covers, DJ mixes, remasters released as new products. They are also the
 // versions a trivia game shouldn't play. Dropped at ingest, which is what keeps
@@ -50,7 +50,7 @@ export function baseTitle(name) {
 }
 
 // Convert one raw iTunes track. Returns null when the track is unusable.
-// `seedGenreKeys` carries the family a track was ingested FOR — the only way
+// `seedGenreKeys` carries the family a track was ingested FOR - the only way
 // seeded-only families (drill, trap) ever get members, since Apple labels them
 // all "Hip-Hop/Rap".
 export function toCatalogRow(raw, seedGenreKeys = []) {

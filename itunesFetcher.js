@@ -99,7 +99,7 @@ function normalize(results) {
 // Genre filtering. The iTunes `term` search is fuzzy free-text, so a search for
 // "hip-hop" also returns Pop, Country, R&B, etc. We keep only tracks whose
 // iTunes primaryGenreName matches the requested genre family. Drill/trap have no
-// distinct iTunes genre — they're labelled "Hip-Hop/Rap" — so they map there.
+// distinct iTunes genre - they're labelled "Hip-Hop/Rap" - so they map there.
 const GENRE_MATCHERS = {
   "hip-hop": /hip-?hop|rap/i,
   rap: /hip-?hop|rap/i,
@@ -119,7 +119,7 @@ function filterGenre(pool, genre) {
 
 // Search seeds per genre. The iTunes `term` search matches ALL fields, so a
 // search for a genre word that is also a common song title ("drill", "trap")
-// returns mostly songs literally titled that word — making the options a wall of
+// returns mostly songs literally titled that word - making the options a wall of
 // identical labels. For those genres we search varied scene/artist seeds instead
 // (picked at random per fetch for cross-game variety) and rely on the
 // primaryGenreName filter for genre accuracy. Genres whose word doesn't collide

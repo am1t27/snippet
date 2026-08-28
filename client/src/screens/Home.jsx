@@ -1,4 +1,4 @@
-// Home hub, profile, and side menu — landing surfaces outside a room.
+// Home hub, profile, and side menu - landing surfaces outside a room.
 import { useEffect, useRef, useState } from "react";
 import { EYEBROW, PANEL } from "../ui";
 import { GenreMarquee } from "../fx/atmosphere";
@@ -11,7 +11,7 @@ export const GAMES = [
   { key: "daily", glyph: "■", title: "Daily", sub: "5 songs, one shot, every day", status: "play", clip: "RANDOM" },
   { key: "musicquiz", glyph: "♬", title: "Music Quiz", sub: "Name the track from a 10s snippet", status: "play", clip: "RANDOM" },
   { key: "heardle", glyph: "▶", title: "Heardle", sub: "Guess the song from its intro", status: "play", clip: "INTRO" },
-  { key: "create", glyph: "+", title: "Create", sub: "Private room — challenge your friends", status: "play", clip: "RANDOM" },
+  { key: "create", glyph: "+", title: "Create", sub: "Private room - challenge your friends", status: "play", clip: "RANDOM" },
   { key: "knockout", glyph: "✕", title: "Knockout", sub: "Get it wrong, you're out - last one standing wins", status: "play", clip: "RANDOM", format: "KNOCKOUT", knockout: "SLOWEST" },
   { key: "focus", glyph: "◱", title: "Focus", sub: "Name the track before the cover sharpens", status: "play", clip: "RANDOM", clue: "COVER" },
 ];
@@ -132,15 +132,15 @@ const FAQ_ITEMS = [
   },
   {
     q: "Can I focus on a genre or era?",
-    a: "The host picks a genre (hip-hop, R&B, rap, drill, trap) and an era filter — all the way back to the 90s — before starting.",
+    a: "The host picks a genre (hip-hop, R&B, rap, drill, trap) and an era filter - all the way back to the 90s - before starting.",
   },
   {
     q: "Do I need to download anything?",
-    a: "No. It runs in the browser and installs as a PWA if you want an app icon. No account required — sign in with Google only if you want a verified name and avatar.",
+    a: "No. It runs in the browser and installs as a PWA if you want an app icon. No account required - sign in with Google only if you want a verified name and avatar.",
   },
 ];
 
-// Same ruled language as WhySnippet — rows on hairlines, no boxes.
+// Same ruled language as WhySnippet - rows on hairlines, no boxes.
 function Faq() {
   const [open, setOpen] = useState(-1);
   return (
@@ -172,7 +172,7 @@ function Faq() {
 }
 
 // Live catalog size for the footer readout. Session-cached; renders nothing
-// until the real number arrives — no invented figures.
+// until the real number arrives - no invented figures.
 function useCatalogTotal() {
   const [total, setTotal] = useState(null);
   useEffect(() => {
@@ -235,7 +235,7 @@ export function Profile({ stats, xp, onBack }) {
       </button>
       <div>
         <p className="font-coin text-sm text-pink">MY PROFILE</p>
-        <p className="mt-2 font-console text-sm text-dim">Your stats on this device — play more to fill them in.</p>
+        <p className="mt-2 font-console text-sm text-dim">Your stats on this device - play more to fill them in.</p>
       </div>
 
       {xp && (

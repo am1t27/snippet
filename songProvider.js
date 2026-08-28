@@ -1,4 +1,4 @@
-// Song provider — the one place the game asks for tracks.
+// Song provider - the one place the game asks for tracks.
 //
 // Order of preference:
 //   1. CATALOG  the local ingested pool (catalog/). Instant, huge, genre- and
@@ -14,7 +14,7 @@ import { fetchSongs } from "./itunesFetcher.js";
 import { sampleTracks, genreCount, catalogReady } from "./catalog/store.js";
 import { log } from "./log.js";
 
-// The catalog serves a match only when it can fill the pool comfortably —
+// The catalog serves a match only when it can fill the pool comfortably -
 // below this it defers to the live fetcher rather than recycling a tiny pool.
 const MIN_CATALOG_POOL = 30;
 

@@ -1,4 +1,4 @@
-// ui.jsx — shared design tokens, reusable components, and overlays.
+// ui.jsx - shared design tokens, reusable components, and overlays.
 // Extracted from App.jsx; presentation only, no socket/data logic.
 import { useEffect, useRef, useState } from "react";
 import sound from "./sound";
@@ -7,7 +7,7 @@ import sound from "./sound";
 export const EYEBROW = "font-console text-[11px] uppercase tracking-[0.2em] text-dim";
 export const PANEL = "border border-rule bg-cabinet";
 // Primary CTA = solid pink ink. An arcade button brightens on hover and
-// presses DOWN on tap — it never floats or glows.
+// presses DOWN on tap - it never floats or glows.
 export const BTN_AMBER =
   "bg-pink px-5 py-4 font-console text-sm uppercase tracking-[0.2em] text-black " +
   "transition-[background-color,transform] duration-100 " +
@@ -21,12 +21,12 @@ export const BTN_GHOST =
   "focus:outline-none focus:ring-2 focus:ring-amber disabled:cursor-not-allowed disabled:opacity-50";
 
 // Reaction call-outs (must match the server's REACTIONS whitelist). Typographic,
-// not emoji — keeps the §12 design rule while still being expressive.
+// not emoji - keeps the §12 design rule while still being expressive.
 const REACTION_TOKENS = ["GG", "WOW", "!!", "??", "★", "♥"];
 
 
 // Animated count-up for score reveals. Eases out over ~600ms; snaps instantly
-// under prefers-reduced-motion. Display-only — never affects real scores.
+// under prefers-reduced-motion. Display-only - never affects real scores.
 export function useCountUp(target, duration = 600) {
   const [val, setVal] = useState(0);
   useEffect(() => {
@@ -107,7 +107,7 @@ export function Avatar({ name, src, size = 26 }) {
   );
 }
 
-// Room chat — used in the lobby and on game over. Rate-limited + masked server
+// Room chat - used in the lobby and on game over. Rate-limited + masked server
 // side; the client just renders.
 export function Chat({ messages, onChat, myId, title = "Chat" }) {
   const [text, setText] = useState("");
@@ -221,7 +221,7 @@ export function ErrorBar({ message }) {
   );
 }
 
-// Bottom toast for room notices (player left, new host) — Feature 5.
+// Bottom toast for room notices (player left, new host) - Feature 5.
 export function Toast({ message }) {
   return (
     <div

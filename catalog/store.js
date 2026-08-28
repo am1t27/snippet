@@ -1,4 +1,4 @@
-// Catalog storage — where the ingested tracks live and how rounds sample them.
+// Catalog storage - where the ingested tracks live and how rounds sample them.
 //
 // Two interchangeable backends, chosen automatically at init:
 //
@@ -6,7 +6,7 @@
 //             is shared across instances. The real production setup.
 //   file      Otherwise: an in-memory table persisted to a JSON snapshot
 //             (CATALOG_FILE, default ./catalog/snapshot.json). Zero setup, and
-//             good enough on a single host — the ingest simply re-runs on boot
+//             good enough on a single host - the ingest simply re-runs on boot
 //             if the snapshot was lost to an ephemeral disk.
 //
 // Either way the game only ever calls sampleTracks(); nothing above this module
@@ -88,7 +88,7 @@ async function loadSnapshot() {
     const list = Array.isArray(parsed) ? parsed : parsed.tracks || [];
     rows = new Map(list.filter((r) => r && r.trackId).map((r) => [String(r.trackId), r]));
   } catch {
-    rows = new Map(); // no snapshot yet — the first ingest creates one
+    rows = new Map(); // no snapshot yet - the first ingest creates one
   }
 }
 
@@ -218,7 +218,7 @@ export async function catalogStats() {
   return { backend, total: rows.size, byGenre, byGenreDecade };
 }
 
-// How many tracks the catalog holds for one genre — the server uses this to
+// How many tracks the catalog holds for one genre - the server uses this to
 // decide whether the catalog can serve a match or the live fetcher should.
 export async function genreCount(genre) {
   const key = String(genre ?? "").toLowerCase();
@@ -233,7 +233,7 @@ export async function genreCount(genre) {
 
 // Random candidate rows for one genre, optionally constrained to a year range.
 // The range must be part of the QUERY (not applied to its result): the random
-// LIMIT would otherwise wash out thin decades — a 5%-of-the-pool decade would
+// LIMIT would otherwise wash out thin decades - a 5%-of-the-pool decade would
 // land ~5% of the candidates and always look starved.
 async function candidates(genre, count, range = null) {
   const key = String(genre ?? "").toLowerCase();
@@ -272,7 +272,7 @@ async function candidates(genre, count, range = null) {
 // Returns rows in exactly the shape gameLogic.buildRound expects
 // ({ trackId, trackName, artistName, previewUrl, releaseYear }), so the catalog
 // is a drop-in replacement for the live fetcher. Returns [] when the catalog
-// cannot serve the request — the caller then falls back.
+// cannot serve the request - the caller then falls back.
 export async function sampleTracks({ genre, decade = "all", count = 20 } = {}) {
   if (!catalogReady()) return [];
   const n = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;

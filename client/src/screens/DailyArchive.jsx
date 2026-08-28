@@ -1,4 +1,4 @@
-// Daily archive — every frozen puzzle so far, newest first. Played days show
+// Daily archive - every frozen puzzle so far, newest first. Played days show
 // their glyph row; any day replays unranked.
 import { EYEBROW, PANEL } from "../ui";
 

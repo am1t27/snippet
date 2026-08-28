@@ -1,4 +1,4 @@
-// Daily challenge socket runtime — solo async play of one frozen puzzle per
+// Daily challenge socket runtime - solo async play of one frozen puzzle per
 // UTC day.
 //
 // CONTRACT WITH THE CLIENT: during play this module emits the SAME event
@@ -11,7 +11,7 @@
 //   - All timing comes from the server clock (session.roundStartedAt set when
 //     the round is emitted); client-reported elapsed times are never read.
 //   - Verified (Google) players get one ranked play per day, enforced by the
-//     (day, sub) primary key. Guests are gated client-side only by design —
+//     (day, sub) primary key. Guests are gated client-side only by design -
 //     they are never written to the leaderboard, so there is nothing to farm.
 import { getSongs } from "./songProvider.js";
 import { MAX_SPEED_BONUS, questionValueFor } from "./gameLogic.js";
@@ -186,7 +186,7 @@ async function finishDaily(socket, s) {
     });
     myRank = await getDailyRank(s.day, s.sub);
     streak = computeStreak(await getDailyDaysPlayed(s.sub), s.day);
-    // XP only for the ranked (first) completion — replays of past days or
+    // XP only for the ranked (first) completion - replays of past days or
     // degraded states never farm the curve.
     if (ranked) {
       const { before } = await addXp(s.sub, s.name, Math.max(0, Math.round(s.score / 10)));
@@ -275,7 +275,7 @@ export function registerDaily(socket, { resolveIdentity, rateLimited }) {
           return;
         }
       } else {
-        // Past days are replayed exactly as frozen — never regenerated.
+        // Past days are replayed exactly as frozen - never regenerated.
         rounds = await getDailyPuzzle(day);
         if (!rounds) {
           socket.emit("errorMsg", { message: "No puzzle was saved for that day." });
@@ -291,7 +291,7 @@ export function registerDaily(socket, { resolveIdentity, rateLimited }) {
       };
       sessions.set(socket.id, s);
       // Ghost race: today's current #1 becomes the pace to beat. Timings only
-      // (correct + ms per finished round) — never an answer. Ranked runs only.
+      // (correct + ms per finished round) - never an answer. Ranked runs only.
       if (s.rankable) {
         getDailyLeaderAnswers(day)
           .then((leader) => {

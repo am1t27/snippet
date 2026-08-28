@@ -1,4 +1,4 @@
-// Tiny structured logger — no dependencies.
+// Tiny structured logger - no dependencies.
 //
 // Set LOG_FORMAT=json for one-line JSON logs (ideal for log aggregators like
 // Railway/Datadog); otherwise human-friendly text for local dev.

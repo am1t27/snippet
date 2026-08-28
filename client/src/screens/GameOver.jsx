@@ -87,7 +87,7 @@ function RoundHistory({ history }) {
               <span className="flex min-w-0 items-center gap-3">
                 <span className="w-6 text-dim">{String(i + 1).padStart(2, "0")}</span>
                 <span className="truncate text-dim">
-                  <span className="text-bone">{h.artistName}</span> — {h.trackName}
+                  <span className="text-bone">{h.artistName}</span> - {h.trackName}
                 </span>
               </span>
               <span className="shrink-0 uppercase tracking-wide text-amber">{h.winner || "No one"}</span>

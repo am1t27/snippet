@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "ingest": "node --env-file-if-exists=.env catalog/ingest.js",
     "ingest:charts": "node --env-file-if-exists=.env catalog/ingest.js charts",
-    "ingest:artists": "node --env-file-if-exists=.env catalog/ingest.js artists"
+    "ingest:artists": "node --env-file-if-exists=.env catalog/ingest.js artists",
+    "test:e2e": "vitest run --config vitest.config.e2e.js"
   },
   "engines": {
     "node": ">=18"
@@ -22,10 +23,11 @@
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
+    "socket.io-client": "^4.8.3",
     "vitest": "^2.1.8"
   },
   "comments": {
-    "optionalScaleDeps": "Loaded lazily ONLY when the matching env var is set (see DEPLOY.md): '@socket.io/redis-adapter' + 'ioredis' (REDIS_URL, multi-instance), '@sentry/node' (SENTRY_DSN, error monitoring). 'pg' is a regular dependency now — with DATABASE_URL set it persists the song catalog + global leaderboard; without it both fall back gracefully.",
-    "envFileScripts": "`start` stays plain `node server.js` so it runs on any Node >=18 (hosts inject env vars themselves). The scripts that load a local .env use --env-file-if-exists, which needs Node >=22.9 — local dev only. Use `npm run dev` locally, `npm start` in production."
+    "optionalScaleDeps": "Loaded lazily ONLY when the matching env var is set (see DEPLOY.md): '@socket.io/redis-adapter' + 'ioredis' (REDIS_URL, multi-instance), '@sentry/node' (SENTRY_DSN, error monitoring). 'pg' is a regular dependency now \u2014 with DATABASE_URL set it persists the song catalog + global leaderboard; without it both fall back gracefully.",
+    "envFileScripts": "`start` stays plain `node server.js` so it runs on any Node >=18 (hosts inject env vars themselves). The scripts that load a local .env use --env-file-if-exists, which needs Node >=22.9 \u2014 local dev only. Use `npm run dev` locally, `npm start` in production."
   }
 }

@@ -229,6 +229,29 @@ function aliveCount(room) {
   return alivePlayers(room).length;
 }
 
+// Final standings. Knockout is decided by placement, not score: anyone without
+// a placement (a match ended early) falls behind those who have one, by score.
+// Shared by gameOver and the rejoin replay so both always agree.
+function finalLeaderboard(room) {
+  const scoring = [...room.players.values()].filter((p) => !p.spectator);
+  const sorted = isKnockout(room)
+    ? scoring.slice().sort((a, b) => {
+        const pa = a.placement ?? Number.MAX_SAFE_INTEGER;
+        const pb = b.placement ?? Number.MAX_SAFE_INTEGER;
+        if (pa !== pb) return pa - pb;
+        return b.score - a.score;
+      })
+    : scoring.slice().sort((a, b) => b.score - a.score);
+  return sorted.map((p, i) => ({
+    rank: i + 1,
+    id: p.id,
+    name: p.name,
+    score: p.score,
+    placement: p.placement,
+    eliminatedRound: p.eliminatedRound,
+  }));
+}
+
 function spectatorCount(room) {
   let n = 0;
   for (const p of room.players.values()) if (p.spectator) n++;
@@ -741,26 +764,7 @@ function endRound(room) {
 function gameOver(room) {
   clearTimers(room);
   room.phase = PHASE.GAME_OVER;
-  const scoring = [...room.players.values()].filter((p) => !p.spectator);
-  const leaderboard = (
-    isKnockout(room)
-      ? // Placement decides knockout, not score. Anyone without a placement
-        // (a match ended early) falls behind those who have one, by score.
-        scoring.slice().sort((a, b) => {
-          const pa = a.placement ?? Number.MAX_SAFE_INTEGER;
-          const pb = b.placement ?? Number.MAX_SAFE_INTEGER;
-          if (pa !== pb) return pa - pb;
-          return b.score - a.score;
-        })
-      : scoring.slice().sort((a, b) => b.score - a.score)
-  ).map((p, i) => ({
-    rank: i + 1,
-    id: p.id,
-    name: p.name,
-    score: p.score,
-    placement: p.placement,
-    eliminatedRound: p.eliminatedRound,
-  }));
+  const leaderboard = finalLeaderboard(room);
   io.to(room.code).emit("gameOver", {
     leaderboard,
     roundHistory: room.history,
@@ -1106,12 +1110,13 @@ io.on("connection", (socket) => {
       socket.emit("reveal", room.lastReveal); // SAFE — round is over, answer is public
     }
     if (room.phase === PHASE.GAME_OVER) {
+      // Same ordering the rest of the room already received: under knockout
+      // that is placement, not score, or a rejoiner would see standings that
+      // disagree with everyone else's.
       socket.emit("gameOver", {
-        leaderboard: [...room.players.values()]
-          .filter((p) => !p.spectator)
-          .sort((a, b) => b.score - a.score)
-          .map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score })),
+        leaderboard: finalLeaderboard(room),
         roundHistory: room.history,
+        format: room.settings.format,
       });
     }
     broadcastState(room);

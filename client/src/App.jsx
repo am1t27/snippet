@@ -60,11 +60,23 @@ export default function App() {
     if (!el) return;
     primedRef.current = true;
     try {
-      el.src =
-        "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA";
+      // A blob: URL, not a data: one. Our CSP allows `media-src 'self' https:
+      // blob:` and deliberately does not allow data:, so a data: source is
+      // blocked before it ever reaches the element — silently, because both
+      // failure paths below swallow it. That cost mobile the whole point of
+      // priming: every round fell back to the manual "Play clip" tap.
+      const url = silentWavUrl();
+      if (!url) return;
+      el.src = url;
       const p = el.play();
+      const done = () => {
+        el.pause();
+        URL.revokeObjectURL(url); // only after playback settled
+      };
       if (p && typeof p.then === "function") {
-        p.then(() => el.pause()).catch(() => {});
+        p.then(done).catch(() => URL.revokeObjectURL(url));
+      } else {
+        done();
       }
     } catch {
       /* ignore — per-round tap fallback still covers playback */
@@ -442,6 +454,22 @@ export default function App() {
       <audio ref={audioRef} preload="auto" crossOrigin="anonymous" className="hidden" />
     </div>
   );
+}
+
+// The shortest valid silent WAV, as bytes. Served to the priming <audio> via a
+// blob: URL because the CSP permits blob: media but not data: media.
+const SILENT_WAV_B64 =
+  "UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA";
+
+function silentWavUrl() {
+  try {
+    const bin = atob(SILENT_WAV_B64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
+  } catch {
+    return null; // no atob/Blob/URL: the per-round tap fallback still works
+  }
 }
 
 // ---------- Masthead ----------

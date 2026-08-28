@@ -160,11 +160,10 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, elim
 
       {state.clue === "COVER" ? (
         <CoverArt
-          token={roundMeta?.artToken ?? null}
-          steps={roundMeta?.artSteps ?? 0}
+          token={state.artToken ?? roundMeta?.artToken ?? null}
+          steps={roundMeta?.artSteps || 6}
           timeRemainingMs={state.timeRemainingMs}
           roundMs={state.roundMs ?? 10000}
-          round={state.round}
         />
       ) : (
         <Waveform audioRef={audioRef} />
@@ -327,23 +326,38 @@ function usePrefersReducedMotion() {
 // The Focus clue: the album cover as a resolution ladder. Every step is a
 // separate request to our own proxy, which refuses any step the round clock has
 // not reached, so there is no sharper image sitting on the client to uncover.
-function CoverArt({ token, steps, timeRemainingMs, roundMs, round }) {
+function CoverArt({ token, steps, timeRemainingMs, roundMs }) {
   const [step, setStep] = useState(0);
+  const startedAt = useRef(0);
   const reduced = usePrefersReducedMotion();
 
-  // New round, new ladder.
+  // Seed the local clock from the server's remaining time whenever a new round
+  // token arrives, then run the ladder locally. The server broadcasts state on
+  // events, not on a tick, so a round where nobody guesses would otherwise
+  // never advance the reveal at all.
   useEffect(() => {
+    if (!token) return;
+    const seeded = Math.max(0, roundMs - (timeRemainingMs ?? roundMs));
+    startedAt.current = Date.now() - seeded;
     setStep(0);
-  }, [round, token]);
+    // timeRemainingMs is read once per token on purpose: it seeds the clock and
+    // must not restart it every time a broadcast lands mid-round.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   useEffect(() => {
     if (!token || !steps) return;
-    const elapsed = Math.max(0, roundMs - (timeRemainingMs ?? roundMs));
-    const next = Math.min(steps - 1, Math.floor(elapsed / (roundMs / steps)));
-    // Only ever sharpens: a late or out-of-order state update must never
-    // re-blur a cover the player has already seen.
-    setStep((s) => (next > s ? next : s));
-  }, [timeRemainingMs, roundMs, steps, token]);
+    const tick = () => {
+      const elapsed = Date.now() - startedAt.current;
+      const next = Math.min(steps - 1, Math.floor(elapsed / (roundMs / steps)));
+      // Only ever sharpens: a late update must never re-blur a cover the player
+      // has already seen.
+      setStep((s) => (next > s ? next : s));
+    };
+    tick();
+    const id = setInterval(tick, 150);
+    return () => clearInterval(id);
+  }, [token, steps, roundMs]);
 
   if (!token) return null;
   const base = import.meta.env.VITE_SOCKET_URL || "";

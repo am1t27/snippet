@@ -439,6 +439,11 @@ function publicState(room) {
     // COVER rounds send no audio at all: the cover is the whole clue.
     audioUrl: inRound && room.settings.clue !== "COVER" ? room.audioUrl : null,
     clue: room.settings.clue,
+    // The art token rides the state, not just roundStart, so a player who
+    // rejoins mid-round still gets a cover instead of an empty panel. It is not
+    // a secret: every player in the room already has it, and the proxy gates by
+    // the round clock rather than by who is asking.
+    artToken: inRound && room.settings.clue === "COVER" ? room.artToken : null,
     options: inRound ? room.options : null,
     timeRemainingMs:
       room.phase === PHASE.ROUND_PLAYING

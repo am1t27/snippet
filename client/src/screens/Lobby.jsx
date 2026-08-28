@@ -50,11 +50,21 @@ const CLIP_OPTS = [
   { label: "Random", value: "RANDOM" },
   { label: "Intro", value: "INTRO" },
 ];
+// Match format. Knockout removes players as the match runs and ends only when
+// one is left standing, so it ignores the rounds setting entirely.
+const FORMAT_OPTS = [
+  { label: "Classic", value: "CLASSIC" },
+  { label: "Knockout", value: "KNOCKOUT" },
+];
+const KNOCKOUT_OPTS = [
+  { label: "Slowest out", value: "SLOWEST" },
+  { label: "Lives", value: "LIVES" },
+];
 
 // Each option slot (1-4) gets its own arcade-button color. Full literal class
 
 // ---------- Lobby ----------
-export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, clipPref, onLeave }) {
+export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, clipPref, formatPref, knockoutPref, onLeave }) {
   const [copied, setCopied] = useState(false);
   const [genre, setGenre] = useState(GENRES[0].value);
   // Match settings (host only). Defaults mirror the server's DEFAULT_SETTINGS;
@@ -66,6 +76,8 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
     mode: "TITLE",
     decade: "all",
     clip: clipPref === "INTRO" ? "INTRO" : "RANDOM",
+    format: formatPref === "KNOCKOUT" ? "KNOCKOUT" : "CLASSIC",
+    knockout: knockoutPref === "LIVES" ? "LIVES" : "SLOWEST",
   });
   const setField = (key) => (value) => setSettings((s) => ({ ...s, [key]: value }));
   const handleStart = () => onStart({ ...settings, genre });
@@ -149,9 +161,24 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
             </div>
           </div>
 
+          <SettingRow label="Format" options={FORMAT_OPTS} value={settings.format} onChange={setField("format")} />
+          {settings.format === "KNOCKOUT" && (
+            <>
+              <SettingRow label="Rule" options={KNOCKOUT_OPTS} value={settings.knockout} onChange={setField("knockout")} />
+              <p className="font-console text-[11px] leading-relaxed text-dim">
+                {settings.knockout === "LIVES"
+                  ? "3 lives each (4 in a 2-player duel). Wrong or no answer costs one. If everyone gets it right, the slowest still loses one. Needs 2 players."
+                  : "One player is knocked out every round, and being right is not enough if you were the slowest. Needs 3 players."}
+              </p>
+            </>
+          )}
           <SettingRow label="Mode" options={MODE_OPTS} value={settings.mode} onChange={setField("mode")} />
           <SettingRow label="Clip" options={CLIP_OPTS} value={settings.clip} onChange={setField("clip")} />
-          <SettingRow label="Rounds" options={ROUND_OPTS} value={settings.rounds} onChange={setField("rounds")} />
+          {/* Knockout runs until one player is left standing, so a round count
+              would control nothing. Hidden rather than disabled. */}
+          {settings.format !== "KNOCKOUT" && (
+            <SettingRow label="Rounds" options={ROUND_OPTS} value={settings.rounds} onChange={setField("rounds")} />
+          )}
           <SettingRow label="Timer" options={TIMER_OPTS} value={settings.roundMs} onChange={setField("roundMs")} />
           <SettingRow label="Answers" options={OPTION_OPTS} value={settings.optionsCount} onChange={setField("optionsCount")} />
           <SettingRow label="Era" options={DECADE_OPTS} value={settings.decade} onChange={setField("decade")} />

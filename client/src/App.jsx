@@ -131,6 +131,8 @@ export default function App() {
   const [view, setView] = useState("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const [clipPref, setClipPref] = useState("RANDOM"); // preset by the Heardle card
+  const [formatPref, setFormatPref] = useState("CLASSIC"); // preset by the Knockout card
+  const [knockoutPref, setKnockoutPref] = useState("SLOWEST");
   const [stats, setStats] = useState(() => getStats());
   const [dailyLocal, setDailyLocal] = useState(() => getDailyLocal());
 
@@ -204,6 +206,8 @@ export default function App() {
       leaveRoom();
     }
     setClipPref(game.clip || "RANDOM");
+    setFormatPref(game.format || "CLASSIC");
+    setKnockoutPref(game.knockout || "SLOWEST");
     setView(game.key === "daily" ? "daily" : "play");
     setMenuOpen(false);
   };
@@ -385,6 +389,8 @@ export default function App() {
               messages={messages}
               onChat={sendChat}
               clipPref={clipPref}
+              formatPref={formatPref}
+              knockoutPref={knockoutPref}
               onLeave={handleLeave}
             />
           ) : phase === "ROUND_PLAYING" ? (
@@ -394,6 +400,7 @@ export default function App() {
               myGuess={myGuess}
               hasGuessed={Boolean(myGuess) || Boolean(me?.hasGuessed)}
               spectator={isSpectator}
+              eliminated={Boolean(me?.eliminated)}
               onGuess={handleGuess}
               onReact={daily ? null : sendReaction}
               ghost={daily && dailyGhost ? dailyGhost : null}
@@ -439,10 +446,14 @@ export default function App() {
 
 // ---------- Masthead ----------
 function Masthead({ phase, round, total, onMenu, onBrand }) {
-  const label =
-    phase === "ROUND_PLAYING" || phase === "ROUND_REVEAL"
-      ? `Track ${String(round).padStart(2, "0")} / ${String(total ?? 10).padStart(2, "0")}`
-      : phase === "GAME_OVER"
+  const inRound = phase === "ROUND_PLAYING" || phase === "ROUND_REVEAL";
+  // Knockout sends total as null: it has no fixed length, so there is no total
+  // to show. Never fall back to a made-up number here.
+  const label = inRound
+    ? total == null
+      ? `Track ${String(round).padStart(2, "0")}`
+      : `Track ${String(round).padStart(2, "0")} / ${String(total).padStart(2, "0")}`
+    : phase === "GAME_OVER"
       ? "Side B · Final"
       : "Side A · Lobby";
   return (

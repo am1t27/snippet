@@ -23,6 +23,11 @@ import {
   questionValueFor,
   speedBonusFor,
   streakBonusFor,
+  minPlayersFor,
+  livesFor,
+  pickEliminated,
+  applyLives,
+  placementFor,
 } from "./gameLogic.js";
 import { log } from "./log.js";
 import { initStorage, recordMatch, topScores, addXp } from "./storage.js";
@@ -49,6 +54,7 @@ const MAX_PLAYERS = 8;
 const MAX_SPECTATORS = 16; // watchers allowed per room (don't count toward MAX_PLAYERS)
 const REJOIN_GRACE_MS = 60000; // hold a disconnected player's slot this long mid-game
 const REVEAL_MS = 3000; // pause on the reveal screen before next round
+const KNOCKOUT_REVEAL_MS = 4500; // longer hold: an elimination needs to land
 const EARLY_END_GRACE_MS = 3000; // keep the clip playing this long after everyone answers
 // Chat + reactions. Reactions are a fixed whitelist of arcade-style call-outs
 // (typographic, not emoji — keeps the §12 design rule) floated over the game.
@@ -109,6 +115,9 @@ function makeRoom(code) {
     timers: { round: null, reveal: null, countdown: null },
     refreshing: false,
     isPublic: false, // listed for quick-play matchmaking
+    // Knockout bookkeeping. startingPlayers freezes the field size at kickoff
+    // so placements stay stable as people are eliminated.
+    knockout: { startingPlayers: 0, eliminatedCount: 0 },
     disconnectGrace: new Map(), // rejoin token -> grace timeout
   };
 }
@@ -135,6 +144,13 @@ function makePlayer(id, name) {
     hasGuessed: false,
     lastRoundScore: 0,
     lastCorrect: false,
+    // Knockout. `eliminated` is deliberately NOT `spectator`: an eliminated
+    // player keeps their score, their leaderboard row, their XP, and their
+    // host eligibility, and only loses the ability to guess.
+    eliminated: false,
+    eliminatedRound: null,
+    placement: null,
+    lives: 0,
   };
 }
 
@@ -199,6 +215,43 @@ function playerCount(room) {
   for (const p of room.players.values()) if (!p.spectator) n++;
   return n;
 }
+function isKnockout(room) {
+  return room.settings.format === "KNOCKOUT";
+}
+
+// Players still in the fight: not spectating, not eliminated. Disconnected
+// players still count as alive while inside their rejoin grace window.
+function alivePlayers(room) {
+  return [...room.players.values()].filter((p) => !p.spectator && !p.eliminated);
+}
+
+function aliveCount(room) {
+  return alivePlayers(room).length;
+}
+
+// Final standings. Knockout is decided by placement, not score: anyone without
+// a placement (a match ended early) falls behind those who have one, by score.
+// Shared by gameOver and the rejoin replay so both always agree.
+function finalLeaderboard(room) {
+  const scoring = [...room.players.values()].filter((p) => !p.spectator);
+  const sorted = isKnockout(room)
+    ? scoring.slice().sort((a, b) => {
+        const pa = a.placement ?? Number.MAX_SAFE_INTEGER;
+        const pb = b.placement ?? Number.MAX_SAFE_INTEGER;
+        if (pa !== pb) return pa - pb;
+        return b.score - a.score;
+      })
+    : scoring.slice().sort((a, b) => b.score - a.score);
+  return sorted.map((p, i) => ({
+    rank: i + 1,
+    id: p.id,
+    name: p.name,
+    score: p.score,
+    placement: p.placement,
+    eliminatedRound: p.eliminatedRound,
+  }));
+}
+
 function spectatorCount(room) {
   let n = 0;
   for (const p of room.players.values()) if (p.spectator) n++;
@@ -257,6 +310,26 @@ function finalizeLeave(room, id) {
   }
   const wasHost = !player.spectator && [...room.players.keys()][0] === id;
   const name = player.name;
+
+  // A player who walks out of a knockout still gets a placement, so the
+  // standings stay honest rather than having them silently disappear.
+  const midKnockout =
+    room.settings.format === "KNOCKOUT" &&
+    (room.phase === PHASE.ROUND_PLAYING || room.phase === PHASE.ROUND_REVEAL);
+  if (midKnockout && !player.spectator && !player.eliminated) {
+    const [placed] = placementFor(
+      room.knockout.startingPlayers,
+      room.knockout.eliminatedCount,
+      [{ id: player.id, score: player.score }]
+    );
+    if (placed) {
+      player.eliminated = true;
+      player.eliminatedRound = room.round;
+      player.placement = placed.placement;
+      room.knockout.eliminatedCount += 1;
+    }
+  }
+
   room.players.delete(id);
   io.to(room.code).emit("playerLeft", { name }); // SAFE
 
@@ -271,6 +344,19 @@ function finalizeLeave(room, id) {
   const activePlayers = [...room.players.values()].filter((p) => !p.spectator && p.connected);
   if (activePlayers.length === 1 && (room.phase === PHASE.ROUND_PLAYING || room.phase === PHASE.ROUND_REVEAL)) {
     io.to(room.code).emit("waitingForPlayers", {}); // SAFE
+  }
+  // Disconnections can decide a knockout: if only one fighter is left, the
+  // match is over and they won.
+  if (
+    room.settings.format === "KNOCKOUT" &&
+    (room.phase === PHASE.ROUND_PLAYING || room.phase === PHASE.ROUND_REVEAL) &&
+    aliveCount(room) <= 1 &&
+    room.players.size > 0
+  ) {
+    const last = alivePlayers(room)[0];
+    if (last && last.placement == null) last.placement = 1;
+    gameOver(room);
+    return;
   }
   if (room.phase === PHASE.ROUND_PLAYING && allGuessed(room)) endRoundSoon(room);
   broadcastState(room);
@@ -316,7 +402,11 @@ function publicState(room) {
     code: room.code,
     phase: room.phase,
     round: room.round,
-    totalRounds: room.settings.rounds,
+    // Knockout has no fixed length, so there is no total to show. The client
+    // renders a bare round number plus a players-remaining count instead.
+    totalRounds: room.settings.format === "KNOCKOUT" ? null : room.settings.rounds,
+    format: room.settings.format,
+    knockout: room.settings.knockout,
     roundMs: room.settings.roundMs, // round length, so the client bar matches
     mode: room.settings.mode, // TITLE | ARTIST — for client labels only
     clip: room.settings.clip, // RANDOM | INTRO — client picks the audio offset
@@ -338,6 +428,12 @@ function publicState(room) {
       score: p.score,
       hasGuessed: p.hasGuessed,
       lastRoundScore: p.lastRoundScore,
+      eliminated: p.eliminated,
+      placement: p.placement,
+      lives:
+        room.settings.format === "KNOCKOUT" && room.settings.knockout === "LIVES"
+          ? p.lives
+          : null,
     })),
   };
 }
@@ -347,7 +443,9 @@ function broadcastState(room) {
 }
 
 function allGuessed(room) {
-  const active = [...room.players.values()].filter((p) => !p.spectator && p.connected);
+  const active = [...room.players.values()].filter(
+    (p) => !p.spectator && !p.eliminated && p.connected
+  );
   if (active.length === 0) return false;
   for (const p of active) if (!p.hasGuessed) return false;
   return true;
@@ -392,7 +490,12 @@ function resetToLobby(room) {
     p.lastRoundScore = 0;
     p.lastCorrect = false;
     p.spectator = false; // promote any watchers into the rematch
+    p.eliminated = false;
+    p.eliminatedRound = null;
+    p.placement = null;
+    p.lives = 0;
   }
+  room.knockout = { startingPlayers: 0, eliminatedCount: 0 };
   // If the held host was dropped, hand the crown to the new first player.
   const newHostId = [...room.players.keys()][0];
   if (newHostId && newHostId !== prevHostId) {
@@ -421,7 +524,7 @@ function startRound(room, n) {
     p.lastCorrect = false;
   }
 
-  const qv = questionValueFor(n - 1);
+  const qv = questionValueFor(n - 1, room.settings.format);
   // SAFE: no correct answer field.
   io.to(room.code).emit("countdown", {
     seconds: 3,
@@ -453,7 +556,7 @@ function beginPlaying(room) {
   const roundIndex = room.round - 1;
   // SAFE: no correct answer field.
   io.to(room.code).emit("roundStart", {
-    questionValue: questionValueFor(roundIndex),
+    questionValue: questionValueFor(roundIndex, room.settings.format),
     maxSpeedBonus: MAX_SPEED_BONUS,
     roundIndex,
   });
@@ -495,7 +598,7 @@ function endRound(room) {
   room.phase = PHASE.ROUND_REVEAL;
 
   const correctName = room.correct ?? null;
-  const questionValue = questionValueFor(room.round - 1);
+  const questionValue = questionValueFor(room.round - 1, room.settings.format);
 
   let fastest = null;
   const scoring = [...room.players.values()].filter((p) => !p.spectator);
@@ -534,6 +637,62 @@ function endRound(room) {
 
   const roundWinner = fastest ? { name: fastest.name, answerTimeSeconds: fastest.answerTimeSeconds } : null;
 
+  // ----- Knockout: decide who leaves this round -----
+  let eliminatedThisRound = [];
+  let swept = false;
+  if (isKnockout(room)) {
+    const joinOrder = [...room.players.keys()];
+    const entries = alivePlayers(room).map((p) => {
+      const g = room.guesses.get(p.id) || null;
+      return {
+        id: p.id,
+        correct: g != null && g.option === correctName,
+        elapsedMs: g != null ? g.elapsedMs : null,
+        score: p.score,
+        joinIndex: joinOrder.indexOf(p.id),
+      };
+    });
+
+    let outIds = [];
+    if (room.settings.knockout === "SLOWEST") {
+      const out = pickEliminated(entries);
+      if (out) outIds = [out];
+    } else {
+      const applied = applyLives(
+        entries,
+        new Map(entries.map((x) => [x.id, room.players.get(x.id).lives]))
+      );
+      swept = applied.swept;
+      for (const [id, left] of applied.lives) {
+        const p = room.players.get(id);
+        if (p) p.lives = left;
+      }
+      outIds = [...applied.lives.keys()].filter((id) => applied.lives.get(id) === 0);
+    }
+
+    // Everyone left can go out at once (LIVES). placementFor still places them,
+    // best score first, so there is no draw state.
+    const batch = outIds
+      .map((id) => room.players.get(id))
+      .filter(Boolean)
+      .map((p) => ({ id: p.id, score: p.score }));
+
+    const placements = placementFor(
+      room.knockout.startingPlayers,
+      room.knockout.eliminatedCount,
+      batch
+    );
+    for (const { id, placement } of placements) {
+      const p = room.players.get(id);
+      if (!p) continue;
+      p.eliminated = true;
+      p.eliminatedRound = room.round;
+      p.placement = placement;
+      eliminatedThisRound.push({ id: p.id, name: p.name, placement });
+    }
+    room.knockout.eliminatedCount += placements.length;
+  }
+
   room.history.push({
     trackName: room.correctTrackName,
     artistName: room.correctArtist,
@@ -553,7 +712,18 @@ function endRound(room) {
     track: { trackName: room.correctTrackName, artistName: room.correctArtist, artworkUrl: room.correctArtwork },
     mode: room.settings.mode,
     round: room.round,
-    totalRounds: room.settings.rounds,
+    totalRounds: isKnockout(room) ? null : room.settings.rounds,
+    format: room.settings.format,
+    knockout: room.settings.knockout,
+    eliminated: eliminatedThisRound,
+    // LIVES only: what everyone has left, and whether Sweep took this one.
+    livesLeft:
+      isKnockout(room) && room.settings.knockout === "LIVES"
+        ? [...room.players.values()]
+            .filter((p) => !p.spectator)
+            .map((p) => ({ id: p.id, lives: p.lives }))
+        : null,
+    swept,
     results,
     roundWinner,
     leaderboard,
@@ -570,22 +740,36 @@ function endRound(room) {
     if (playerCount(room) === 0) {
       resetToLobby(room);
       broadcastState(room);
-    } else if (room.round >= room.settings.rounds) {
+      return;
+    }
+    if (isKnockout(room)) {
+      // Knockout has NO round limit. It ends only when one player is left.
+      if (aliveCount(room) <= 1) {
+        const last = alivePlayers(room)[0];
+        if (last && last.placement == null) last.placement = 1;
+        gameOver(room);
+      } else {
+        startRound(room, room.round + 1);
+      }
+      return;
+    }
+    if (room.round >= room.settings.rounds) {
       gameOver(room);
     } else {
       startRound(room, room.round + 1);
     }
-  }, REVEAL_MS);
+  }, isKnockout(room) ? KNOCKOUT_REVEAL_MS : REVEAL_MS);
 }
 
 function gameOver(room) {
   clearTimers(room);
   room.phase = PHASE.GAME_OVER;
-  const leaderboard = [...room.players.values()]
-    .filter((p) => !p.spectator)
-    .sort((a, b) => b.score - a.score)
-    .map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score }));
-  io.to(room.code).emit("gameOver", { leaderboard, roundHistory: room.history }); // SAFE: round over
+  const leaderboard = finalLeaderboard(room);
+  io.to(room.code).emit("gameOver", {
+    leaderboard,
+    roundHistory: room.history,
+    format: room.settings.format,
+  }); // SAFE: round over
   broadcastState(room);
   // Persist final scores for the global leaderboard (no-op without DATABASE_URL).
   recordMatch({ players: [...room.players.values()], settings: room.settings }, log);
@@ -926,12 +1110,13 @@ io.on("connection", (socket) => {
       socket.emit("reveal", room.lastReveal); // SAFE — round is over, answer is public
     }
     if (room.phase === PHASE.GAME_OVER) {
+      // Same ordering the rest of the room already received: under knockout
+      // that is placement, not score, or a rejoiner would see standings that
+      // disagree with everyone else's.
       socket.emit("gameOver", {
-        leaderboard: [...room.players.values()]
-          .filter((p) => !p.spectator)
-          .sort((a, b) => b.score - a.score)
-          .map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score })),
+        leaderboard: finalLeaderboard(room),
         roundHistory: room.history,
+        format: room.settings.format,
       });
     }
     broadcastState(room);
@@ -962,14 +1147,29 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // The host's requested settings are validated/clamped here — never trusted.
+    // Sanitized BEFORE the loading state so a rejected knockout lineup never
+    // leaves the room stuck on a loading screen.
+    room.settings = sanitizeSettings(payload);
+
+    const starting = playerCount(room);
+    if (starting < minPlayersFor(room.settings)) {
+      socket.emit("errorMsg", {
+        message:
+          room.settings.knockout === "LIVES"
+            ? "Knockout needs at least 2 players."
+            : "Knockout with Slowest out needs at least 3 players. Try Lives for a 2-player duel.",
+      });
+      return;
+    }
+    room.knockout = { startingPlayers: starting, eliminatedCount: 0 };
+
     room.loading = true;
     io.to(room.code).emit("loading", { message: "Loading songs…" }); // SAFE
 
-    // The host's requested settings are validated/clamped here — never trusted.
-    room.settings = sanitizeSettings(payload);
     let pool;
     try {
-      pool = await getSongs(room.settings.genre, poolSizeFor(room.settings), {
+      pool = await getSongs(room.settings.genre, poolSizeFor(room.settings, starting), {
         decade: room.settings.decade,
       });
     } catch {
@@ -988,9 +1188,17 @@ io.on("connection", (socket) => {
     room.pool = pool;
     room.usedTrackIds = new Set();
     room.history = [];
+    const seedLives =
+      room.settings.format === "KNOCKOUT" && room.settings.knockout === "LIVES"
+        ? livesFor(starting)
+        : 0;
     for (const p of room.players.values()) {
       p.score = 0;
       p.streak = 0;
+      p.eliminated = false;
+      p.eliminatedRound = null;
+      p.placement = null;
+      p.lives = p.spectator ? 0 : seedLives;
     }
     startRound(room, 1);
   });
@@ -1009,6 +1217,10 @@ io.on("connection", (socket) => {
     }
     if (player.spectator) {
       socket.emit("errorMsg", { message: "Spectators can't guess." });
+      return;
+    }
+    if (player.eliminated) {
+      socket.emit("errorMsg", { message: "You're out. Watch the rest play it out." });
       return;
     }
     // S1 (rate limit): one guess per player per round.

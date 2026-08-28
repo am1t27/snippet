@@ -23,6 +23,16 @@ export const DECADE_CHOICES = ["all", "new", "2020s", "2010s", "2000s", "1990s",
 // from the very start of the track. The offset itself is applied client-side;
 // the server just records the choice and tells the client via state.clip.
 export const CLIP_CHOICES = ["RANDOM", "INTRO"];
+// Match format. CLASSIC is the fixed-round game. KNOCKOUT removes players as
+// the match runs and ends only when one is left standing (no round limit).
+export const FORMAT_CHOICES = ["CLASSIC", "KNOCKOUT"];
+// Knockout rule. SLOWEST eliminates exactly one player per round. LIVES gives
+// everyone a life pool and eliminates them at zero.
+export const KNOCKOUT_CHOICES = ["SLOWEST", "LIVES"];
+// Lives under the LIVES rule. A 2-player duel starts with more, because it has
+// no thinning field to create pressure.
+export const KNOCKOUT_LIVES = 3;
+export const KNOCKOUT_LIVES_DUEL = 4;
 // Playable genres come from the catalog's genre registry (one source of truth
 // for ingest, validation, and the lobby picker). First key is the default.
 export const ALLOWED_GENRES = GENRE_KEYS;
@@ -35,6 +45,8 @@ export const DEFAULT_SETTINGS = {
   decade: DECADE_CHOICES[0],
   clip: CLIP_CHOICES[0],
   genre: "hip-hop",
+  format: FORMAT_CHOICES[0],
+  knockout: KNOCKOUT_CHOICES[0],
 };
 
 // Coerce an untrusted settings payload into a safe, fully-populated object.
@@ -50,13 +62,20 @@ export function sanitizeSettings(payload) {
     decade: pick(String(p.decade || "").toLowerCase(), DECADE_CHOICES),
     clip: pick(String(p.clip || "").toUpperCase(), CLIP_CHOICES),
     genre: ALLOWED_GENRES.includes(genre) ? genre : DEFAULT_SETTINGS.genre,
+    format: pick(String(p.format || "").toUpperCase(), FORMAT_CHOICES),
+    // Always populated so the settings object keeps a fixed shape; ignored
+    // unless format is KNOCKOUT.
+    knockout: pick(String(p.knockout || "").toUpperCase(), KNOCKOUT_CHOICES),
   };
 }
 
 // Pool size needed for a match: enough distinct tracks for every round plus a
 // full set of distractors, with headroom. Bounded so we never hammer the API.
-export function poolSizeFor(settings) {
-  return Math.min(60, Math.max(16, settings.rounds + settings.optionsCount + 6));
+// Under knockout the driver is the rules' worst case, not settings.rounds,
+// which knockout ignores entirely.
+export function poolSizeFor(settings, playerCount = 0) {
+  const rounds = knockoutMaxRounds(settings, playerCount) ?? settings.rounds;
+  return Math.min(60, Math.max(16, rounds + settings.optionsCount + 6));
 }
 
 // Allow letters, digits, space, underscore, hyphen; then mask guest profanity.
@@ -126,8 +145,18 @@ export function buildRound(pool, usedTrackIds, settings) {
   };
 }
 
-export function questionValueFor(roundIndex) {
-  return QUESTION_BASE + roundIndex * QUESTION_STEP;
+// Round 10 (roundIndex 9) is where the ramp stops under knockout. Knockout has
+// no round cap, so an unclamped ramp would reach ~5800 points a question in a
+// long match, making early rounds worthless and printing XP against every
+// other mode (XP is score / 10). Placement carries the drama instead.
+export const KNOCKOUT_VALUE_PLATEAU_ROUND = 10;
+
+export function questionValueFor(roundIndex, format = "CLASSIC") {
+  const idx =
+    format === "KNOCKOUT"
+      ? Math.min(roundIndex, KNOCKOUT_VALUE_PLATEAU_ROUND - 1)
+      : roundIndex;
+  return QUESTION_BASE + idx * QUESTION_STEP;
 }
 export function speedBonusFor(elapsedMs, roundMs) {
   const ratio = Math.max(0, Math.min(1, (roundMs - elapsedMs) / roundMs));
@@ -138,4 +167,102 @@ export function streakBonusFor(streak) {
   if (streak === 3) return 100;
   if (streak === 2) return 50;
   return 0;
+}
+
+// ----- Knockout -----
+
+// Rank one round's outcomes best-first. The ordering is total and
+// deterministic, so "who goes out" is never random:
+//   1. correct answers, fastest first
+//   2. wrong answers (answering wrong quickly is not rewarded)
+//   3. no answer at all
+// Ties fall through to higher score, then earlier join order.
+// `entries` is [{ id, correct, elapsedMs, score, joinIndex }]; elapsedMs is
+// null when the player did not answer. Returns a new array; never mutates.
+export function rankRoundResults(entries) {
+  const tier = (x) => (x.correct ? 0 : x.elapsedMs == null ? 2 : 1);
+  return entries.slice().sort((a, b) => {
+    const ta = tier(a);
+    const tb = tier(b);
+    if (ta !== tb) return ta - tb;
+    // Speed only separates correct answers.
+    if (ta === 0 && a.elapsedMs !== b.elapsedMs) return a.elapsedMs - b.elapsedMs;
+    if (a.score !== b.score) return b.score - a.score;
+    return a.joinIndex - b.joinIndex;
+  });
+}
+
+// SLOWEST: exactly one player leaves per round, the worst-ranked one.
+export function pickEliminated(entries) {
+  const ranked = rankRoundResults(entries);
+  return ranked.length > 0 ? ranked[ranked.length - 1].id : null;
+}
+
+// LIVES: a wrong or missing answer costs one life.
+//
+// The Sweep rule closes the stalemate hole. When every alive player answers
+// correctly, no life would be lost and the round would change nothing; with no
+// round cap that is an unbounded match, not merely a dull stretch. So a clean
+// sweep costs the slowest correct player a life. It fires only when nobody was
+// already wrong, so normal play keeps its forgiving feel, and it applies at
+// every player count, which is why no separate two-player endgame is needed.
+//
+// Because every round removes at least one life, a match is bounded by the
+// lives on the board: at most startingPlayers * lives - 1 rounds.
+//
+// Returns a new Map; the input is never mutated.
+export function applyLives(entries, livesById) {
+  const missed = entries.filter((x) => !x.correct);
+  const lost = [];
+  let swept = false;
+
+  if (missed.length > 0) {
+    for (const x of missed) lost.push(x.id);
+  } else if (entries.length > 0) {
+    swept = true;
+    const ranked = rankRoundResults(entries);
+    lost.push(ranked[ranked.length - 1].id);
+  }
+
+  const next = new Map(livesById);
+  for (const id of lost) next.set(id, Math.max(0, (next.get(id) ?? 0) - 1));
+  return { lives: next, lost, swept };
+}
+
+// Placements count DOWN as the field thins: the first player out of eight
+// takes 8th, the survivor takes 1st. When several players go out in the same
+// round they fill the contiguous block at the bottom of what is still
+// available, ordered among themselves by score, so a higher score always
+// places better. That also resolves the case where every remaining player is
+// eliminated at once: the best score takes 1st and there is no draw.
+export function placementFor(startingCount, alreadyEliminated, batch) {
+  const worstAvailable = startingCount - alreadyEliminated;
+  const ordered = batch.slice().sort((a, b) => b.score - a.score);
+  return ordered.map((x, i) => ({
+    id: x.id,
+    placement: worstAvailable - (ordered.length - 1 - i),
+  }));
+}
+
+// A duel starts with more lives: it has no thinning field to build pressure,
+// so it needs runway. Fixed at match start and never changed mid-match.
+export function livesFor(startingPlayers) {
+  return startingPlayers === 2 ? KNOCKOUT_LIVES_DUEL : KNOCKOUT_LIVES;
+}
+
+// SLOWEST needs 3: with 2 players it would end after a single round, which
+// does not read as a game. LIVES needs only 2, because Sweep makes a duel
+// terminate cleanly.
+export function minPlayersFor(settings) {
+  if (settings.format !== "KNOCKOUT") return 1;
+  return settings.knockout === "LIVES" ? 2 : 3;
+}
+
+// Worst-case round count, used for pool sizing only. Knockout has NO round
+// cap: this is what the rules can produce, not a limit imposed on the match.
+export function knockoutMaxRounds(settings, playerCount) {
+  if (settings.format !== "KNOCKOUT") return null;
+  const n = Math.max(2, Number(playerCount) || 0);
+  if (settings.knockout === "SLOWEST") return n - 1; // one out per round
+  return n * livesFor(n) - 1; // at least one life lost per round
 }

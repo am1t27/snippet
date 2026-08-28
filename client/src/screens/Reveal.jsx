@@ -9,7 +9,7 @@ export function Reveal({ reveal, myId, onReact, players }) {
   const round = reveal?.round ?? 0;
   const avatarOf = {};
   for (const p of players ?? []) avatarOf[p.id] = p.avatar;
-  const total = reveal?.totalRounds ?? 10;
+  const total = reveal?.totalRounds ?? null; // null under knockout: no fixed length
   const track = reveal?.track ?? null; // { trackName, artistName } — always shown
   const isArtist = reveal?.mode === "ARTIST";
   const leaderboard =
@@ -33,8 +33,28 @@ export function Reveal({ reveal, myId, onReact, players }) {
   return (
     <div className="space-y-6">
       <p className={`${EYEBROW} animate-rise`}>
-        Round {String(round).padStart(2, "0")} / {String(total).padStart(2, "0")}
+        Round {String(round).padStart(2, "0")}
+        {total != null && ` / ${String(total).padStart(2, "0")}`}
       </p>
+
+      {(reveal?.eliminated?.length > 0 || reveal?.swept) && (
+        <div className={`${PANEL} animate-rise border-l-2 border-l-bad px-5 py-4`} style={{ animationDelay: "40ms" }}>
+          {reveal.swept && (
+            // A life vanishing with no wrong answer on screen would read as a
+            // bug. Always say which rule took it.
+            <p className={EYEBROW}>Everyone got it · slowest loses a life</p>
+          )}
+          {(reveal.eliminated ?? []).map((e) => (
+            <p key={e.id} className="mt-2 font-marquee text-lg font-black uppercase tracking-tight text-bad">
+              {e.name} is out
+              <span className="ml-2 font-console text-xs tracking-[0.2em] text-dim">
+                {e.placement}
+                {e.placement === 1 ? "st" : e.placement === 2 ? "nd" : e.placement === 3 ? "rd" : "th"}
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
 
       {track && (
         <div

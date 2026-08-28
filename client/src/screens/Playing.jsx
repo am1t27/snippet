@@ -17,8 +17,8 @@ const OPT_COLORS = [
 ];
 
 // ---------- Playing ----------
-export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGuess, onReact, ghost, audioRef }) {
-  const locked = hasGuessed || spectator; // spectators can't answer
+export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, eliminated, onGuess, onReact, ghost, audioRef }) {
+  const locked = hasGuessed || spectator || eliminated; // spectators and knocked-out players can't answer
   const startRef = useRef(() => {});
   const [needsTap, setNeedsTap] = useState(false);
   const [audioError, setAudioError] = useState(false);
@@ -119,6 +119,34 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, onGu
           QV <span className="text-amber">{questionValue}</span> · Speed ≤{maxSpeedBonus}
         </span>
       </div>
+
+      {state.format === "KNOCKOUT" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3">
+          <span className={EYEBROW}>
+            {state.players.filter((p) => !p.spectator && !p.eliminated).length} still in
+          </span>
+          {state.knockout === "LIVES" && (
+            <span className="flex flex-wrap justify-end gap-x-3 gap-y-1">
+              {state.players
+                .filter((p) => !p.spectator)
+                .map((p) => (
+                  <span
+                    key={p.id}
+                    className={`font-console text-[11px] uppercase tracking-[0.15em] ${
+                      p.eliminated ? "text-dim line-through" : "text-bone"
+                    }`}
+                  >
+                    {p.name}{" "}
+                    <span aria-hidden="true" className={p.eliminated ? "text-dim" : "text-amber"}>
+                      {"\u25CF".repeat(Math.max(0, p.lives ?? 0))}
+                    </span>
+                    <span className="sr-only">{p.lives ?? 0} lives left</span>
+                  </span>
+                ))}
+            </span>
+          )}
+        </div>
+      )}
 
       <TimeCounter
         timeRemainingMs={state.timeRemainingMs}

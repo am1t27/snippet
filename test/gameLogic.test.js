@@ -13,6 +13,9 @@ import {
   pickEliminated,
   applyLives,
   placementFor,
+  livesFor,
+  minPlayersFor,
+  knockoutMaxRounds,
 } from "../gameLogic.js";
 
 const POOL = [
@@ -325,5 +328,63 @@ describe("placementFor", () => {
 
   it("handles an empty batch", () => {
     expect(placementFor(8, 0, [])).toEqual([]);
+  });
+});
+
+describe("knockout sizing and scoring helpers", () => {
+  const ko = (knockout) => sanitizeSettings({ format: "KNOCKOUT", knockout });
+
+  it("gives a duel more lives than a crowd", () => {
+    expect(livesFor(2)).toBe(4);
+    expect(livesFor(3)).toBe(3);
+    expect(livesFor(8)).toBe(3);
+  });
+
+  it("requires three players for SLOWEST and two for LIVES", () => {
+    // A 2-player SLOWEST match would end after a single round.
+    expect(minPlayersFor(ko("SLOWEST"))).toBe(3);
+    expect(minPlayersFor(ko("LIVES"))).toBe(2);
+    expect(minPlayersFor(sanitizeSettings({ format: "CLASSIC" }))).toBe(1);
+  });
+
+  it("bounds SLOWEST at one elimination per round", () => {
+    expect(knockoutMaxRounds(ko("SLOWEST"), 8)).toBe(7);
+    expect(knockoutMaxRounds(ko("SLOWEST"), 3)).toBe(2);
+  });
+
+  it("bounds LIVES by the lives on the board", () => {
+    // 8 players * 3 lives - 1: every round costs a life, survivor ends on one.
+    expect(knockoutMaxRounds(ko("LIVES"), 8)).toBe(23);
+    // A duel: 2 players * 4 lives - 1.
+    expect(knockoutMaxRounds(ko("LIVES"), 2)).toBe(7);
+  });
+
+  it("returns no bound under CLASSIC", () => {
+    expect(knockoutMaxRounds(sanitizeSettings({ format: "CLASSIC" }), 8)).toBe(null);
+  });
+
+  it("sizes the pool from the knockout bound, not settings.rounds", () => {
+    const s = ko("LIVES");
+    // Worst case 23 rounds + 4 options + 6 headroom, under the 60 ceiling.
+    expect(poolSizeFor(s, 8)).toBe(33);
+    // CLASSIC is unchanged by the new parameter.
+    const classic = sanitizeSettings({ format: "CLASSIC" });
+    expect(poolSizeFor(classic)).toBe(poolSizeFor(classic, 8));
+  });
+
+  it("plateaus the knockout question value after round 10", () => {
+    // Identical to classic through round 10 (roundIndex 9).
+    for (const i of [0, 5, 9]) {
+      expect(questionValueFor(i, "KNOCKOUT")).toBe(questionValueFor(i));
+    }
+    // Flat at 2550 from round 11 onward, so a long match cannot print XP.
+    expect(questionValueFor(9, "KNOCKOUT")).toBe(2550);
+    expect(questionValueFor(10, "KNOCKOUT")).toBe(2550);
+    expect(questionValueFor(22, "KNOCKOUT")).toBe(2550);
+  });
+
+  it("leaves classic scoring untouched at every round", () => {
+    expect(questionValueFor(0)).toBe(300);
+    expect(questionValueFor(22)).toBe(300 + 22 * 250);
   });
 });

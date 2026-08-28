@@ -71,8 +71,11 @@ export function sanitizeSettings(payload) {
 
 // Pool size needed for a match: enough distinct tracks for every round plus a
 // full set of distractors, with headroom. Bounded so we never hammer the API.
-export function poolSizeFor(settings) {
-  return Math.min(60, Math.max(16, settings.rounds + settings.optionsCount + 6));
+// Under knockout the driver is the rules' worst case, not settings.rounds,
+// which knockout ignores entirely.
+export function poolSizeFor(settings, playerCount = 0) {
+  const rounds = knockoutMaxRounds(settings, playerCount) ?? settings.rounds;
+  return Math.min(60, Math.max(16, rounds + settings.optionsCount + 6));
 }
 
 // Allow letters, digits, space, underscore, hyphen; then mask guest profanity.
@@ -142,8 +145,18 @@ export function buildRound(pool, usedTrackIds, settings) {
   };
 }
 
-export function questionValueFor(roundIndex) {
-  return QUESTION_BASE + roundIndex * QUESTION_STEP;
+// Round 10 (roundIndex 9) is where the ramp stops under knockout. Knockout has
+// no round cap, so an unclamped ramp would reach ~5800 points a question in a
+// long match, making early rounds worthless and printing XP against every
+// other mode (XP is score / 10). Placement carries the drama instead.
+export const KNOCKOUT_VALUE_PLATEAU_ROUND = 10;
+
+export function questionValueFor(roundIndex, format = "CLASSIC") {
+  const idx =
+    format === "KNOCKOUT"
+      ? Math.min(roundIndex, KNOCKOUT_VALUE_PLATEAU_ROUND - 1)
+      : roundIndex;
+  return QUESTION_BASE + idx * QUESTION_STEP;
 }
 export function speedBonusFor(elapsedMs, roundMs) {
   const ratio = Math.max(0, Math.min(1, (roundMs - elapsedMs) / roundMs));
@@ -229,4 +242,27 @@ export function placementFor(startingCount, alreadyEliminated, batch) {
     id: x.id,
     placement: worstAvailable - (ordered.length - 1 - i),
   }));
+}
+
+// A duel starts with more lives: it has no thinning field to build pressure,
+// so it needs runway. Fixed at match start and never changed mid-match.
+export function livesFor(startingPlayers) {
+  return startingPlayers === 2 ? KNOCKOUT_LIVES_DUEL : KNOCKOUT_LIVES;
+}
+
+// SLOWEST needs 3: with 2 players it would end after a single round, which
+// does not read as a game. LIVES needs only 2, because Sweep makes a duel
+// terminate cleanly.
+export function minPlayersFor(settings) {
+  if (settings.format !== "KNOCKOUT") return 1;
+  return settings.knockout === "LIVES" ? 2 : 3;
+}
+
+// Worst-case round count, used for pool sizing only. Knockout has NO round
+// cap: this is what the rules can produce, not a limit imposed on the match.
+export function knockoutMaxRounds(settings, playerCount) {
+  if (settings.format !== "KNOCKOUT") return null;
+  const n = Math.max(2, Number(playerCount) || 0);
+  if (settings.knockout === "SLOWEST") return n - 1; // one out per round
+  return n * livesFor(n) - 1; // at least one life lost per round
 }

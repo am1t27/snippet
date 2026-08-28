@@ -400,6 +400,7 @@ export default function App() {
               myGuess={myGuess}
               hasGuessed={Boolean(myGuess) || Boolean(me?.hasGuessed)}
               spectator={isSpectator}
+              eliminated={Boolean(me?.eliminated)}
               onGuess={handleGuess}
               onReact={daily ? null : sendReaction}
               ghost={daily && dailyGhost ? dailyGhost : null}
@@ -445,10 +446,14 @@ export default function App() {
 
 // ---------- Masthead ----------
 function Masthead({ phase, round, total, onMenu, onBrand }) {
-  const label =
-    phase === "ROUND_PLAYING" || phase === "ROUND_REVEAL"
-      ? `Track ${String(round).padStart(2, "0")} / ${String(total ?? 10).padStart(2, "0")}`
-      : phase === "GAME_OVER"
+  const inRound = phase === "ROUND_PLAYING" || phase === "ROUND_REVEAL";
+  // Knockout sends total as null: it has no fixed length, so there is no total
+  // to show. Never fall back to a made-up number here.
+  const label = inRound
+    ? total == null
+      ? `Track ${String(round).padStart(2, "0")}`
+      : `Track ${String(round).padStart(2, "0")} / ${String(total).padStart(2, "0")}`
+    : phase === "GAME_OVER"
       ? "Side B · Final"
       : "Side A · Lobby";
   return (

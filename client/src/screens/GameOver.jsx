@@ -7,6 +7,7 @@ export function GameOver({ gameOver, players, myId, onRestart, messages, onChat 
   const rows =
     gameOver?.leaderboard ??
     players.toSorted((a, b) => b.score - a.score).map((p, i) => ({ rank: i + 1, ...p }));
+  const isKnockout = gameOver?.format === "KNOCKOUT";
   const champ = rows[0];
   const rest = rows.slice(1);
   const history = gameOver?.roundHistory ?? null;
@@ -25,7 +26,7 @@ export function GameOver({ gameOver, players, myId, onRestart, messages, onChat 
           className="animate-rise border-2 border-amber bg-amber/5 px-6 py-6 text-center"
           style={{ animationDelay: "120ms" }}
         >
-          <p className="font-coin text-xs text-amber">1UP · Champion</p>
+          <p className="font-coin text-xs text-amber">{isKnockout ? "1UP · Last one standing" : "1UP · Champion"}</p>
           <div className="mt-3 flex items-center justify-center gap-3">
             <Avatar name={champ.name} src={avatarOf[champ.id]} size={32} />
             <p className="font-console uppercase tracking-wide text-bone">{champ.name}</p>
@@ -46,7 +47,9 @@ export function GameOver({ gameOver, players, myId, onRestart, messages, onChat 
                   <span className="w-6 font-console text-xs text-dim">{String(r.rank ?? i + 2).padStart(2, "0")}</span>
                   <span className="font-console text-sm uppercase tracking-wide text-dim">{r.name}</span>
                 </span>
-                <span className="font-console text-sm tabular-nums text-dim">{r.score}</span>
+                <span className="font-console text-sm tabular-nums text-dim">
+                  {isKnockout && r.eliminatedRound ? `out in round ${r.eliminatedRound}` : r.score}
+                </span>
               </li>
             ))}
           </ol>

@@ -56,6 +56,12 @@ const FORMAT_OPTS = [
   { label: "Classic", value: "CLASSIC" },
   { label: "Knockout", value: "KNOCKOUT" },
 ];
+// What the player is given each round. COVER shows the album art sharpening and
+// plays nothing, so the Clip setting has nothing to act on.
+const CLUE_OPTS = [
+  { label: "Audio", value: "AUDIO" },
+  { label: "Cover", value: "COVER" },
+];
 const KNOCKOUT_OPTS = [
   { label: "Slowest out", value: "SLOWEST" },
   { label: "Lives", value: "LIVES" },
@@ -64,7 +70,7 @@ const KNOCKOUT_OPTS = [
 // Each option slot (1-4) gets its own arcade-button color. Full literal class
 
 // ---------- Lobby ----------
-export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, clipPref, formatPref, knockoutPref, onLeave }) {
+export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, clipPref, formatPref, knockoutPref, cluePref, onLeave }) {
   const [copied, setCopied] = useState(false);
   const [genre, setGenre] = useState(GENRES[0].value);
   // Match settings (host only). Defaults mirror the server's DEFAULT_SETTINGS;
@@ -78,6 +84,7 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
     clip: clipPref === "INTRO" ? "INTRO" : "RANDOM",
     format: formatPref === "KNOCKOUT" ? "KNOCKOUT" : "CLASSIC",
     knockout: knockoutPref === "LIVES" ? "LIVES" : "SLOWEST",
+    clue: cluePref === "COVER" ? "COVER" : "AUDIO",
   });
   const setField = (key) => (value) => setSettings((s) => ({ ...s, [key]: value }));
   const handleStart = () => onStart({ ...settings, genre });
@@ -173,7 +180,11 @@ export function Lobby({ players, myId, isHost, onStart, code, messages, onChat, 
             </>
           )}
           <SettingRow label="Mode" options={MODE_OPTS} value={settings.mode} onChange={setField("mode")} />
-          <SettingRow label="Clip" options={CLIP_OPTS} value={settings.clip} onChange={setField("clip")} />
+          <SettingRow label="Clue" options={CLUE_OPTS} value={settings.clue} onChange={setField("clue")} />
+          {/* A cover round plays nothing, so the clip start point is moot. */}
+          {settings.clue !== "COVER" && (
+            <SettingRow label="Clip" options={CLIP_OPTS} value={settings.clip} onChange={setField("clip")} />
+          )}
           {/* Knockout runs until one player is left standing, so a round count
               would control nothing. Hidden rather than disabled. */}
           {settings.format !== "KNOCKOUT" && (

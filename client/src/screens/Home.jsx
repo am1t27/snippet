@@ -13,9 +13,7 @@ export const GAMES = [
   { key: "heardle", glyph: "▶", title: "Heardle", sub: "Guess the song from its intro", status: "play", clip: "INTRO" },
   { key: "create", glyph: "+", title: "Create", sub: "Private room — challenge your friends", status: "play", clip: "RANDOM" },
   { key: "knockout", glyph: "✕", title: "Knockout", sub: "Get it wrong, you're out - last one standing wins", status: "play", clip: "RANDOM", format: "KNOCKOUT", knockout: "SLOWEST" },
-  { key: "wordzic", glyph: "▦", title: "Wordzic", sub: "Guess the music word", status: "soon" },
-  { key: "lyricles", glyph: "❝", title: "Lyricles", sub: "Guess the song from its lyrics", status: "soon" },
-  { key: "crosszic", glyph: "✚", title: "Crosszic", sub: "Music crossword puzzle", status: "soon" },
+  { key: "focus", glyph: "◱", title: "Focus", sub: "Name the track before the cover sharpens", status: "play", clip: "RANDOM", clue: "COVER" },
 ];
 
 // ---------- Home hub (landing) ----------

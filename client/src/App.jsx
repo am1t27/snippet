@@ -145,6 +145,7 @@ export default function App() {
   const [clipPref, setClipPref] = useState("RANDOM"); // preset by the Heardle card
   const [formatPref, setFormatPref] = useState("CLASSIC"); // preset by the Knockout card
   const [knockoutPref, setKnockoutPref] = useState("SLOWEST");
+  const [cluePref, setCluePref] = useState("AUDIO"); // preset by the Focus card
   const [stats, setStats] = useState(() => getStats());
   const [dailyLocal, setDailyLocal] = useState(() => getDailyLocal());
 
@@ -220,6 +221,7 @@ export default function App() {
     setClipPref(game.clip || "RANDOM");
     setFormatPref(game.format || "CLASSIC");
     setKnockoutPref(game.knockout || "SLOWEST");
+    setCluePref(game.clue || "AUDIO");
     setView(game.key === "daily" ? "daily" : "play");
     setMenuOpen(false);
   };
@@ -403,6 +405,7 @@ export default function App() {
               clipPref={clipPref}
               formatPref={formatPref}
               knockoutPref={knockoutPref}
+              cluePref={cluePref}
               onLeave={handleLeave}
             />
           ) : phase === "ROUND_PLAYING" ? (

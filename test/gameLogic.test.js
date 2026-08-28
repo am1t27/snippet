@@ -42,6 +42,7 @@ describe("sanitizeSettings", () => {
       genre: "bollywood",
       format: "CLASSIC",
       knockout: "SLOWEST",
+      clue: "AUDIO",
     });
     // "rap" is no longer its own family — it clamps to the hip-hop default.
     expect(sanitizeSettings({ genre: "rap" }).genre).toBe("hip-hop");
@@ -58,6 +59,15 @@ describe("sanitizeSettings", () => {
     expect(sanitizeSettings({}).knockout).toBe("SLOWEST");
     expect(sanitizeSettings({ format: "battle" }).format).toBe("CLASSIC");
     expect(sanitizeSettings({ knockout: "sudden" }).knockout).toBe("SLOWEST");
+  });
+
+  it("accepts and uppercases the clue axis", () => {
+    expect(sanitizeSettings({ clue: "cover" }).clue).toBe("COVER");
+  });
+
+  it("defaults clue to AUDIO and clamps junk", () => {
+    expect(sanitizeSettings({}).clue).toBe("AUDIO");
+    expect(sanitizeSettings({ clue: "smell" }).clue).toBe("AUDIO");
   });
 
   it("keeps knockout rule populated even under CLASSIC", () => {

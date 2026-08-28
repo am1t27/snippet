@@ -33,9 +33,29 @@ describe("sanitizeSettings", () => {
       decade: "2010s",
       clip: "INTRO",
       genre: "bollywood",
+      format: "CLASSIC",
+      knockout: "SLOWEST",
     });
     // "rap" is no longer its own family — it clamps to the hip-hop default.
     expect(sanitizeSettings({ genre: "rap" }).genre).toBe("hip-hop");
+  });
+
+  it("accepts and uppercases knockout settings", () => {
+    const s = sanitizeSettings({ format: "knockout", knockout: "lives" });
+    expect(s.format).toBe("KNOCKOUT");
+    expect(s.knockout).toBe("LIVES");
+  });
+
+  it("defaults knockout settings and clamps junk values", () => {
+    expect(sanitizeSettings({}).format).toBe("CLASSIC");
+    expect(sanitizeSettings({}).knockout).toBe("SLOWEST");
+    expect(sanitizeSettings({ format: "battle" }).format).toBe("CLASSIC");
+    expect(sanitizeSettings({ knockout: "sudden" }).knockout).toBe("SLOWEST");
+  });
+
+  it("keeps knockout rule populated even under CLASSIC", () => {
+    // Fixed object shape: the rule is always present, just unused in CLASSIC.
+    expect(sanitizeSettings({ format: "CLASSIC", knockout: "LIVES" })).toHaveProperty("knockout", "LIVES");
   });
 
   it("clamps every off-list / hostile field back to the default", () => {

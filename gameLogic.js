@@ -23,6 +23,16 @@ export const DECADE_CHOICES = ["all", "new", "2020s", "2010s", "2000s", "1990s",
 // from the very start of the track. The offset itself is applied client-side;
 // the server just records the choice and tells the client via state.clip.
 export const CLIP_CHOICES = ["RANDOM", "INTRO"];
+// Match format. CLASSIC is the fixed-round game. KNOCKOUT removes players as
+// the match runs and ends only when one is left standing (no round limit).
+export const FORMAT_CHOICES = ["CLASSIC", "KNOCKOUT"];
+// Knockout rule. SLOWEST eliminates exactly one player per round. LIVES gives
+// everyone a life pool and eliminates them at zero.
+export const KNOCKOUT_CHOICES = ["SLOWEST", "LIVES"];
+// Lives under the LIVES rule. A 2-player duel starts with more, because it has
+// no thinning field to create pressure.
+export const KNOCKOUT_LIVES = 3;
+export const KNOCKOUT_LIVES_DUEL = 4;
 // Playable genres come from the catalog's genre registry (one source of truth
 // for ingest, validation, and the lobby picker). First key is the default.
 export const ALLOWED_GENRES = GENRE_KEYS;
@@ -35,6 +45,8 @@ export const DEFAULT_SETTINGS = {
   decade: DECADE_CHOICES[0],
   clip: CLIP_CHOICES[0],
   genre: "hip-hop",
+  format: FORMAT_CHOICES[0],
+  knockout: KNOCKOUT_CHOICES[0],
 };
 
 // Coerce an untrusted settings payload into a safe, fully-populated object.
@@ -50,6 +62,10 @@ export function sanitizeSettings(payload) {
     decade: pick(String(p.decade || "").toLowerCase(), DECADE_CHOICES),
     clip: pick(String(p.clip || "").toUpperCase(), CLIP_CHOICES),
     genre: ALLOWED_GENRES.includes(genre) ? genre : DEFAULT_SETTINGS.genre,
+    format: pick(String(p.format || "").toUpperCase(), FORMAT_CHOICES),
+    // Always populated so the settings object keeps a fixed shape; ignored
+    // unless format is KNOCKOUT.
+    knockout: pick(String(p.knockout || "").toUpperCase(), KNOCKOUT_CHOICES),
   };
 }
 

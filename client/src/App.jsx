@@ -131,6 +131,8 @@ export default function App() {
   const [view, setView] = useState("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const [clipPref, setClipPref] = useState("RANDOM"); // preset by the Heardle card
+  const [formatPref, setFormatPref] = useState("CLASSIC"); // preset by the Knockout card
+  const [knockoutPref, setKnockoutPref] = useState("SLOWEST");
   const [stats, setStats] = useState(() => getStats());
   const [dailyLocal, setDailyLocal] = useState(() => getDailyLocal());
 
@@ -204,6 +206,8 @@ export default function App() {
       leaveRoom();
     }
     setClipPref(game.clip || "RANDOM");
+    setFormatPref(game.format || "CLASSIC");
+    setKnockoutPref(game.knockout || "SLOWEST");
     setView(game.key === "daily" ? "daily" : "play");
     setMenuOpen(false);
   };
@@ -385,6 +389,8 @@ export default function App() {
               messages={messages}
               onChat={sendChat}
               clipPref={clipPref}
+              formatPref={formatPref}
+              knockoutPref={knockoutPref}
               onLeave={handleLeave}
             />
           ) : phase === "ROUND_PLAYING" ? (

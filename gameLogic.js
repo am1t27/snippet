@@ -155,3 +155,32 @@ export function streakBonusFor(streak) {
   if (streak === 2) return 50;
   return 0;
 }
+
+// ----- Knockout -----
+
+// Rank one round's outcomes best-first. The ordering is total and
+// deterministic, so "who goes out" is never random:
+//   1. correct answers, fastest first
+//   2. wrong answers (answering wrong quickly is not rewarded)
+//   3. no answer at all
+// Ties fall through to higher score, then earlier join order.
+// `entries` is [{ id, correct, elapsedMs, score, joinIndex }]; elapsedMs is
+// null when the player did not answer. Returns a new array; never mutates.
+export function rankRoundResults(entries) {
+  const tier = (x) => (x.correct ? 0 : x.elapsedMs == null ? 2 : 1);
+  return entries.slice().sort((a, b) => {
+    const ta = tier(a);
+    const tb = tier(b);
+    if (ta !== tb) return ta - tb;
+    // Speed only separates correct answers.
+    if (ta === 0 && a.elapsedMs !== b.elapsedMs) return a.elapsedMs - b.elapsedMs;
+    if (a.score !== b.score) return b.score - a.score;
+    return a.joinIndex - b.joinIndex;
+  });
+}
+
+// SLOWEST: exactly one player leaves per round, the worst-ranked one.
+export function pickEliminated(entries) {
+  const ranked = rankRoundResults(entries);
+  return ranked.length > 0 ? ranked[ranked.length - 1].id : null;
+}

@@ -9,6 +9,8 @@ import {
   streakBonusFor,
   DEFAULT_SETTINGS,
   MAX_SPEED_BONUS,
+  rankRoundResults,
+  pickEliminated,
 } from "../gameLogic.js";
 
 const POOL = [
@@ -136,5 +138,70 @@ describe("cleanName", () => {
   });
   it("masks profane handles", () => {
     expect(cleanName("fuck")).toBe("****");
+  });
+});
+
+describe("rankRoundResults / pickEliminated", () => {
+  // Helper: keeps the tests readable. joinIndex defaults ascending.
+  const e = (id, correct, elapsedMs, score = 0, joinIndex = 0) =>
+    ({ id, correct, elapsedMs, score, joinIndex });
+
+  it("ranks correct answers first, fastest to slowest", () => {
+    const ranked = rankRoundResults([
+      e("slow", true, 8000),
+      e("fast", true, 1000),
+      e("mid", true, 4000),
+    ]);
+    expect(ranked.map((r) => r.id)).toEqual(["fast", "mid", "slow"]);
+  });
+
+  it("ranks every correct answer above every wrong one", () => {
+    const ranked = rankRoundResults([e("wrong", false, 100), e("correct", true, 9000)]);
+    expect(ranked.map((r) => r.id)).toEqual(["correct", "wrong"]);
+  });
+
+  it("ranks a missing answer below a wrong one", () => {
+    const ranked = rankRoundResults([e("absent", false, null), e("wrong", false, 9000)]);
+    expect(ranked.map((r) => r.id)).toEqual(["wrong", "absent"]);
+  });
+
+  it("does not reward answering wrong quickly", () => {
+    // Both wrong: speed is irrelevant, score breaks the tie.
+    const ranked = rankRoundResults([
+      e("fastWrong", false, 100, 500),
+      e("slowWrong", false, 9000, 900),
+    ]);
+    expect(ranked.map((r) => r.id)).toEqual(["slowWrong", "fastWrong"]);
+  });
+
+  it("breaks ties by higher score, then by earlier join order", () => {
+    const ranked = rankRoundResults([
+      e("late", false, null, 100, 5),
+      e("early", false, null, 100, 1),
+      e("rich", false, null, 999, 9),
+    ]);
+    expect(ranked.map((r) => r.id)).toEqual(["rich", "early", "late"]);
+  });
+
+  it("does not mutate its input", () => {
+    const input = [e("b", true, 5000), e("a", true, 1000)];
+    const copy = input.slice();
+    rankRoundResults(input);
+    expect(input).toEqual(copy);
+  });
+
+  it("eliminates the last-ranked player", () => {
+    expect(pickEliminated([e("a", true, 1000), e("b", false, 2000)])).toBe("b");
+  });
+
+  it("eliminates the slowest player even when everyone was correct", () => {
+    // The signature moment of SLOWEST: right answer, still knocked out.
+    expect(
+      pickEliminated([e("a", true, 1000), e("b", true, 2000), e("c", true, 9000)])
+    ).toBe("c");
+  });
+
+  it("returns null for an empty round", () => {
+    expect(pickEliminated([])).toBe(null);
   });
 });

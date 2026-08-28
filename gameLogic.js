@@ -215,3 +215,18 @@ export function applyLives(entries, livesById) {
   for (const id of lost) next.set(id, Math.max(0, (next.get(id) ?? 0) - 1));
   return { lives: next, lost, swept };
 }
+
+// Placements count DOWN as the field thins: the first player out of eight
+// takes 8th, the survivor takes 1st. When several players go out in the same
+// round they fill the contiguous block at the bottom of what is still
+// available, ordered among themselves by score, so a higher score always
+// places better. That also resolves the case where every remaining player is
+// eliminated at once: the best score takes 1st and there is no draw.
+export function placementFor(startingCount, alreadyEliminated, batch) {
+  const worstAvailable = startingCount - alreadyEliminated;
+  const ordered = batch.slice().sort((a, b) => b.score - a.score);
+  return ordered.map((x, i) => ({
+    id: x.id,
+    placement: worstAvailable - (ordered.length - 1 - i),
+  }));
+}

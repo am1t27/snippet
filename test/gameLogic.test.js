@@ -12,6 +12,7 @@ import {
   rankRoundResults,
   pickEliminated,
   applyLives,
+  placementFor,
 } from "../gameLogic.js";
 
 const POOL = [
@@ -292,5 +293,37 @@ describe("applyLives (LIVES rule and Sweep)", () => {
     const out = applyLives([], lives([]));
     expect(out.lost).toEqual([]);
     expect(out.swept).toBe(false);
+  });
+});
+
+describe("placementFor", () => {
+  it("gives the first player eliminated of eight the last place", () => {
+    expect(placementFor(8, 0, [{ id: "a", score: 100 }])).toEqual([{ id: "a", placement: 8 }]);
+  });
+
+  it("counts placements down as the field thins", () => {
+    expect(placementFor(8, 1, [{ id: "b", score: 100 }])).toEqual([{ id: "b", placement: 7 }]);
+    expect(placementFor(8, 6, [{ id: "g", score: 100 }])).toEqual([{ id: "g", placement: 2 }]);
+  });
+
+  it("orders a simultaneous batch by score, higher score placing better", () => {
+    expect(
+      placementFor(8, 5, [{ id: "low", score: 100 }, { id: "high", score: 900 }])
+    ).toEqual([{ id: "high", placement: 2 }, { id: "low", placement: 3 }]);
+  });
+
+  it("awards 1st to the highest score when everyone left goes out together", () => {
+    // No draw state: the last two both hit zero, score separates them.
+    expect(
+      placementFor(8, 6, [{ id: "loser", score: 400 }, { id: "winner", score: 800 }])
+    ).toEqual([{ id: "winner", placement: 1 }, { id: "loser", placement: 2 }]);
+  });
+
+  it("gives the sole survivor first place", () => {
+    expect(placementFor(3, 2, [{ id: "champ", score: 50 }])).toEqual([{ id: "champ", placement: 1 }]);
+  });
+
+  it("handles an empty batch", () => {
+    expect(placementFor(8, 0, [])).toEqual([]);
   });
 });

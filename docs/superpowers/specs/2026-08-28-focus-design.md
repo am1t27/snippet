@@ -5,12 +5,14 @@ Date: 2026-08-28
 
 ## Summary
 
-A daily solo puzzle played by eye instead of ear. Five album covers, each
-starting as an unreadable block of colour and sharpening over about fifteen
-seconds. Four track titles are offered; the player commits a single guess
-whenever they dare, and answering earlier scores more.
+A room game mode played by eye instead of ear. Instead of a clip, each round
+shows the album cover starting as an unreadable block of colour and sharpening
+across the round. The options, the timer, the scoring and the reveal are
+unchanged; only the clue changes.
 
-The mode is called **Focus**.
+The mode is called **Focus**. It is a **multiplayer game mode, not a daily
+puzzle** — the standing rule for this project is that new modes are game modes.
+The existing daily challenge is untouched by this work.
 
 ## Why this mode, and why not the other one
 
@@ -58,13 +60,34 @@ Two properties observed in that render, both accepted:
    effectively revealed; it only matters if the ladder runs too long, which is
    why the ladder ends at 300 and the round ends with it.
 
+## Settings axis
+
+Focus is a third orthogonal axis, following the pattern Knockout established:
+
+| Axis | Meaning | Values |
+|---|---|---|
+| `mode` | what you name | TITLE, ARTIST |
+| `format` | match structure | CLASSIC, KNOCKOUT |
+| **`clue`** | **what you are given** | **AUDIO, COVER** |
+
+All three compose. Focus works with title or artist naming, and inside a classic
+match or a knockout. `clip` (RANDOM/INTRO) becomes meaningless under COVER and
+is hidden in the lobby, exactly as `rounds` is hidden under knockout.
+
+Adding `clue` to `sanitizeSettings` does not reach the daily challenge: `daily.js`
+builds rounds with its own settings object and never consults this field.
+
 ## The reveal ladder
 
-Six steps over a fifteen-second round, advancing every 2.5 seconds:
+Six steps spread across the round, so the ladder tracks the host's chosen timer
+(7.5s, 10s or 15s) rather than assuming a fixed length:
 
 ```
 8px -> 14px -> 24px -> 44px -> 90px -> 300px
 ```
+
+Step index is `floor(elapsedMs / (roundMs / 6))`, clamped to the last step. At
+the default 10s round each step lasts about 1.7 seconds.
 
 Rendered at a fixed display size with `image-rendering: pixelated`, so each step
 reads as a deliberate mosaic rather than a blurry photo.
@@ -83,155 +106,124 @@ Therefore the client never receives an image-host URL. It receives an opaque
 route on our own server:
 
 ```
-GET /focus/art/:day/:round/:step
+GET /art/:token/:step
 ```
+
+`token` is an unguessable random id minted per round and delivered only to the
+players in that room, via `roundStart`. The server maps it to the round's track.
+Room codes are deliberately not used in the route: they are short and were the
+subject of an earlier enumeration fix, so they must not become an image key.
 
 The route:
 
-- resolves `(day, round)` to a track via the frozen puzzle, server-side
-- **refuses any `step` beyond the step the requesting session has reached**,
-  returning 403. This is the actual protection; without it the route is just a
-  slower version of the same hole.
+- resolves the token to `{ room, round, artworkUrl }`, server-side
+- **refuses any `step` beyond what the round clock allows**, returning 403.
+  The bound is `stepForElapsed(Date.now() - room.roundStartedAt, roundMs)`. This
+  is the actual protection; without it the route is just a slower version of the
+  same hole. The server already owns `roundStartedAt`, so no per-player
+  progress state is needed.
+- refuses a token whose round is over or whose room no longer exists
 - streams the image from the host at the size for that step
-- caches the day's images in memory (5 rounds x 6 steps = 30 images, well under
-  1MB) so the host is hit at most once per image per day
+- caches fetched images in memory, keyed by `trackId:step`, bounded and evicted,
+  so the host is hit at most once per image
 
-Session progress is tracked exactly like the existing daily's in-memory session
-map. A player who has not started the day gets 403 for every step.
+Tokens are dropped when the round ends, so a token can never be replayed against
+a later round.
+
+**Under COVER the server must not send `audioUrl` at all.** Sending it would
+hand the player the answer through the other sense and defeat the entire mode.
 
 This is the same posture as the rest of the codebase: the server is the only
 source of truth, and the answer never reaches the client early.
 
 ## Round rules
 
-- Five rounds per UTC day, frozen so everyone plays the same puzzle.
-- One round per distinct genre, reusing the existing daily's genre-spreading
-  approach.
-- Four options, track titles, exactly one correct.
-- **One guess per round.** Committing ends the round immediately.
-- Not answering within the fifteen seconds scores zero for that round.
-- The correct answer and the full-resolution cover are revealed after the round
-  resolves, never before.
+Everything here is the existing round loop, unchanged:
+
+- Host-chosen round count, timer, option count, genre and era, as today.
+- Options are track titles or artist names per `mode`.
+- One guess per player per round, as today.
+- Not answering scores zero for that round, as today.
+- The correct answer and the full cover are revealed after the round resolves,
+  never before.
+
+The only new rule: **the pool is restricted to tracks that carry artwork** when
+`clue` is COVER. Coverage is currently 100%, so this is a guard against a future
+thin ingest rather than a live constraint, and it fails loudly (the existing
+"not enough songs for these settings" path) rather than showing a blank tile.
 
 ## Scoring
 
 Deliberately reuses the existing maths so a Focus point is worth exactly what a
 room point or a daily point is worth:
 
-- `questionValueFor(roundIndex)` for the base value, unchanged and unclamped
-  (five rounds cannot run away the way an uncapped knockout could).
-- `speedBonusFor(elapsedMs, 15000)` for the earliness bonus. Answering at step 1
-  is worth close to the full bonus; answering at step 6 is worth nearly nothing.
-  No new scoring concept is introduced: "answered early" and "answered fast" are
-  the same measurement.
+- `questionValueFor(roundIndex, format)` for the base value, exactly as today,
+  including the knockout plateau when the two modes are combined.
+- `speedBonusFor(elapsedMs, roundMs)` for the earliness bonus, unchanged.
+  Answering at step 1 is worth close to the full bonus; answering at step 6 is
+  worth nearly nothing. **No new scoring concept is introduced**: "answered
+  early" and "answered fast" are already the same measurement.
 - `streakBonusFor(streak)` across consecutive correct rounds, as elsewhere.
 - XP at score / 10, as every other mode.
 
-## Streak, archive, share
+## Wire protocol
 
-- Daily streaks reuse `computeStreak(daysPlayed, today)` from `dailyLogic.js`
-  unchanged.
-- A Past Puzzles archive mirrors `DailyArchive`: any earlier day is replayable
-  for practice and never ranked.
-- The share grid uses the project's typographic glyphs, never emoji, following
-  `dailyLogic.shareText`. Each round contributes one glyph showing how early it
-  was solved, so the grid encodes skill rather than just pass/fail:
+No new socket events and no new phase. Two existing payloads are extended:
 
-```
-SNIPPET FOCUS #1 - 3450
-█ ▓ ░ █ ▒
-snippet-flock.vercel.app
-```
+- `publicState` gains `clue`, and under COVER sets `audioUrl` to `null`.
+- `roundStart` gains `artToken` and `artSteps` under COVER.
 
-Full block = solved at the blurriest step, descending shades for later steps,
-hollow for missed. No track name appears, so nothing is spoiled.
+`reveal` already carries `track.artworkUrl`, so the full-resolution reveal needs
+no change at all.
 
 ## Storage
 
-Focus gets its own tables, for the same reason Quartets would have: the existing
-`daily_puzzles` table is one row per day and is live in production with real
-data, so adding a discriminator would mean migrating a working system for no
-benefit.
-
-```sql
-CREATE TABLE IF NOT EXISTS focus_puzzles (
-  day TEXT PRIMARY KEY,
-  rounds JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS focus_results (
-  day TEXT NOT NULL,
-  sub TEXT NOT NULL,
-  score INT NOT NULL,
-  answers JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  PRIMARY KEY (day, sub)
-);
-```
-
-Both follow the existing storage module exactly: Postgres when `DATABASE_URL` is
-set, an in-memory Map otherwise, first writer freezes the day, one result per
-(day, sub) with the first completion winning. Guests play unranked and keep a
-local streak; Google-verified players get one ranked run per day.
-
-Generation is on demand and frozen, matching the existing daily.
-
-## Wire protocol
-
-New socket events, namespaced like the existing `daily:*`:
-
-- `focus:status` -> `{ day, number, played, streak }`
-- `focus:start` -> `{ day, number, round, options, stepMs, steps }` — no track
-  name, no artist, no image URL beyond the proxied route
-- `focus:answer` `{ option }` -> resolves the round, then reveals
-- `focus:finish` -> `{ score, perRound, share, xp }`
-- `focus:archive` -> past days, practice only
-
-Identity resolution and rate limiting reuse the existing `resolveIdentity` and
-`rateLimited` helpers.
+None. Focus adds no tables and no persistence. It is a match setting, so it is
+recorded in the existing match history and leaderboard exactly like genre or era.
 
 ## Client
 
-- **Home:** a `focus` card replaces one placeholder. The `wordzic`, `lyricles`
-  and `crosszic` placeholders are **removed entirely** in the same change: they
-  are competitor product names (Wordzic is SongTrivia2's), they use none of our
-  catalogue, and Lyricles is not buildable at all since the catalogue carries no
-  lyric data.
-- **Board:** the cover at the current step, rendered at a fixed size with
-  `image-rendering: pixelated`; the existing staged timer bar; the four options
-  in the existing option-button language.
-- **Preloading:** all six steps of the current round are fetched before the
-  round starts, so a step change is instant rather than a loading flash. The
-  next round preloads during the reveal.
-- **Reduced motion:** the step transition is a hard cut rather than a crossfade
-  when `prefers-reduced-motion` is set.
-- **Results:** score, per-round breakdown, share grid with copy-to-clipboard,
-  streak and XP, following `DailyResults.jsx`.
+- **Home:** a `focus` card, presetting `clue: COVER`, the way the Knockout card
+  presets its format. The `wordzic`, `lyricles` and `crosszic` placeholders are
+  **removed entirely** in the same change: they are competitor product names
+  (Wordzic is SongTrivia2's), they use none of our catalogue, and Lyricles is
+  not buildable at all since the catalogue carries no lyric data.
+- **Lobby:** a Clue toggle (Audio / Cover), host only. The Clip row is hidden
+  under COVER since it controls nothing there.
+- **Playing:** under COVER the waveform and audio are replaced by the cover at
+  the current step, rendered at a fixed size with `image-rendering: pixelated`.
+  The staged timer bar and the option buttons are unchanged. The audio element
+  is never pointed at a source, so nothing plays.
+- **Preloading:** the round's later steps are fetched during the countdown so a
+  step change is instant rather than a loading flash.
+- **Reduced motion:** the step change is a hard cut rather than a crossfade when
+  `prefers-reduced-motion` is set.
 
 ## Testing
 
 Pure logic in `focusLogic.js`, unit-tested without sockets or network:
 
-- `stepForElapsed(elapsedMs)` — which ladder step is visible at a given time
-- `buildFocusRounds({ getSongs, ... })` — five rounds, distinct genres, every
-  track carrying artwork
-- `scoreFocusAnswer({ isCorrect, elapsedMs, roundIndex, streak })`
-- `focusShareText({ number, score, perRound })`
-- `stepAllowed(sessionStep, requestedStep)` — the anti-cheat predicate
+- `ART_STEPS` — the ladder, exported so client and server cannot drift
+- `stepForElapsed(elapsedMs, roundMs)` — which ladder step is visible
+- `artUrlForStep(artworkUrl, step)` — host URL substitution, server-side only
+- `stepAllowed(elapsedMs, roundMs, requestedStep)` — the anti-cheat predicate
+- extended `sanitizeSettings` for `clue`
 
-Required coverage: the ladder boundaries (elapsed 0, 2499, 2500, 14999, 15000+);
-a round with no artwork is never built; scoring at the first and last step; an
-unanswered round scores zero; the share grid contains no track name; and
-`stepAllowed` refuses a step ahead of the session, which is the security
-property the whole mode rests on.
+Required coverage: ladder boundaries at each of the three legal round lengths
+(7.5s, 10s, 15s), including elapsed 0, the exact step boundary, and past the
+end; `artUrlForStep` substituting only the size segment; settings sanitisation
+of a bad `clue`; and **`stepAllowed` refusing a step ahead of the clock**, which
+is the security property the whole mode rests on.
 
-End-to-end follows the knockout pattern: a real server and a real browser, one
-full five-round run, plus an explicit assertion that requesting a step ahead of
-session progress returns 403.
+End-to-end follows the knockout pattern: a real server and a real browser
+playing a Focus match, plus explicit assertions that `audioUrl` is null under
+COVER and that requesting a step ahead of the round clock returns 403.
 
 ## Out of scope
 
-- No multiplayer or room mode. Knockout fills the social slot.
-- No audio. Adding the clip would make the artwork irrelevant.
+- **No daily variant.** New modes are game modes in this project. The existing
+  daily challenge is not touched.
+- No audio under COVER. Sending the clip would make the artwork irrelevant and
+  hand over the answer.
 - No free-text guessing. Four options keep the existing input surface.
+- No new phase, no new tables, no new socket events.

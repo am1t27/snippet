@@ -23,6 +23,11 @@ import {
   questionValueFor,
   speedBonusFor,
   streakBonusFor,
+  minPlayersFor,
+  livesFor,
+  pickEliminated,
+  applyLives,
+  placementFor,
 } from "./gameLogic.js";
 import { log } from "./log.js";
 import { initStorage, recordMatch, topScores, addXp } from "./storage.js";
@@ -109,6 +114,9 @@ function makeRoom(code) {
     timers: { round: null, reveal: null, countdown: null },
     refreshing: false,
     isPublic: false, // listed for quick-play matchmaking
+    // Knockout bookkeeping. startingPlayers freezes the field size at kickoff
+    // so placements stay stable as people are eliminated.
+    knockout: { startingPlayers: 0, eliminatedCount: 0 },
     disconnectGrace: new Map(), // rejoin token -> grace timeout
   };
 }
@@ -135,6 +143,13 @@ function makePlayer(id, name) {
     hasGuessed: false,
     lastRoundScore: 0,
     lastCorrect: false,
+    // Knockout. `eliminated` is deliberately NOT `spectator`: an eliminated
+    // player keeps their score, their leaderboard row, their XP, and their
+    // host eligibility, and only loses the ability to guess.
+    eliminated: false,
+    eliminatedRound: null,
+    placement: null,
+    lives: 0,
   };
 }
 
@@ -199,6 +214,20 @@ function playerCount(room) {
   for (const p of room.players.values()) if (!p.spectator) n++;
   return n;
 }
+function isKnockout(room) {
+  return room.settings.format === "KNOCKOUT";
+}
+
+// Players still in the fight: not spectating, not eliminated. Disconnected
+// players still count as alive while inside their rejoin grace window.
+function alivePlayers(room) {
+  return [...room.players.values()].filter((p) => !p.spectator && !p.eliminated);
+}
+
+function aliveCount(room) {
+  return alivePlayers(room).length;
+}
+
 function spectatorCount(room) {
   let n = 0;
   for (const p of room.players.values()) if (p.spectator) n++;
@@ -392,7 +421,12 @@ function resetToLobby(room) {
     p.lastRoundScore = 0;
     p.lastCorrect = false;
     p.spectator = false; // promote any watchers into the rematch
+    p.eliminated = false;
+    p.eliminatedRound = null;
+    p.placement = null;
+    p.lives = 0;
   }
+  room.knockout = { startingPlayers: 0, eliminatedCount: 0 };
   // If the held host was dropped, hand the crown to the new first player.
   const newHostId = [...room.players.keys()][0];
   if (newHostId && newHostId !== prevHostId) {
@@ -962,14 +996,29 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // The host's requested settings are validated/clamped here — never trusted.
+    // Sanitized BEFORE the loading state so a rejected knockout lineup never
+    // leaves the room stuck on a loading screen.
+    room.settings = sanitizeSettings(payload);
+
+    const starting = playerCount(room);
+    if (starting < minPlayersFor(room.settings)) {
+      socket.emit("errorMsg", {
+        message:
+          room.settings.knockout === "LIVES"
+            ? "Knockout needs at least 2 players."
+            : "Knockout with Slowest out needs at least 3 players. Try Lives for a 2-player duel.",
+      });
+      return;
+    }
+    room.knockout = { startingPlayers: starting, eliminatedCount: 0 };
+
     room.loading = true;
     io.to(room.code).emit("loading", { message: "Loading songs…" }); // SAFE
 
-    // The host's requested settings are validated/clamped here — never trusted.
-    room.settings = sanitizeSettings(payload);
     let pool;
     try {
-      pool = await getSongs(room.settings.genre, poolSizeFor(room.settings), {
+      pool = await getSongs(room.settings.genre, poolSizeFor(room.settings, starting), {
         decade: room.settings.decade,
       });
     } catch {
@@ -988,9 +1037,17 @@ io.on("connection", (socket) => {
     room.pool = pool;
     room.usedTrackIds = new Set();
     room.history = [];
+    const seedLives =
+      room.settings.format === "KNOCKOUT" && room.settings.knockout === "LIVES"
+        ? livesFor(starting)
+        : 0;
     for (const p of room.players.values()) {
       p.score = 0;
       p.streak = 0;
+      p.eliminated = false;
+      p.eliminatedRound = null;
+      p.placement = null;
+      p.lives = p.spectator ? 0 : seedLives;
     }
     startRound(room, 1);
   });

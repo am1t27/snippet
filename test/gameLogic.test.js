@@ -11,6 +11,7 @@ import {
   MAX_SPEED_BONUS,
   rankRoundResults,
   pickEliminated,
+  applyLives,
 } from "../gameLogic.js";
 
 const POOL = [
@@ -203,5 +204,93 @@ describe("rankRoundResults / pickEliminated", () => {
 
   it("returns null for an empty round", () => {
     expect(pickEliminated([])).toBe(null);
+  });
+});
+
+describe("applyLives (LIVES rule and Sweep)", () => {
+  const e = (id, correct, elapsedMs, score = 0, joinIndex = 0) =>
+    ({ id, correct, elapsedMs, score, joinIndex });
+  const lives = (pairs) => new Map(pairs);
+
+  it("takes one life from every player who was wrong or absent", () => {
+    const out = applyLives(
+      [e("a", true, 1000), e("b", false, 2000), e("c", false, null)],
+      lives([["a", 3], ["b", 3], ["c", 2]])
+    );
+    expect(out.lost.sort()).toEqual(["b", "c"]);
+    expect(out.lives.get("a")).toBe(3);
+    expect(out.lives.get("b")).toBe(2);
+    expect(out.lives.get("c")).toBe(1);
+    expect(out.swept).toBe(false);
+  });
+
+  it("Sweep: a clean round costs the slowest correct player a life", () => {
+    const out = applyLives(
+      [e("a", true, 1000), e("b", true, 2000), e("c", true, 9000)],
+      lives([["a", 3], ["b", 3], ["c", 3]])
+    );
+    expect(out.swept).toBe(true);
+    expect(out.lost).toEqual(["c"]);
+    expect(out.lives.get("c")).toBe(2);
+    expect(out.lives.get("a")).toBe(3);
+  });
+
+  it("Sweep fires at two alive players, which is the old final-two case", () => {
+    const out = applyLives([e("a", true, 1000), e("b", true, 1001)], lives([["a", 4], ["b", 4]]));
+    expect(out.swept).toBe(true);
+    expect(out.lost).toEqual(["b"]);
+  });
+
+  it("Sweep fires at four alive players too", () => {
+    const out = applyLives(
+      [e("a", true, 10), e("b", true, 20), e("c", true, 30), e("d", true, 40)],
+      lives([["a", 3], ["b", 3], ["c", 3], ["d", 3]])
+    );
+    expect(out.swept).toBe(true);
+    expect(out.lost).toEqual(["d"]);
+  });
+
+  it("Sweep stays dormant when anyone was wrong", () => {
+    const out = applyLives([e("a", true, 1000), e("b", false, 2000)], lives([["a", 3], ["b", 3]]));
+    expect(out.swept).toBe(false);
+    expect(out.lost).toEqual(["b"]);
+    expect(out.lives.get("a")).toBe(3);
+  });
+
+  it("Sweep stays dormant when a held player misses the round", () => {
+    // A player inside the rejoin grace window scores as no-answer, so the
+    // round is not a clean sweep and a network blip never triggers Sweep.
+    const out = applyLives([e("a", true, 1000), e("held", false, null)], lives([["a", 3], ["held", 3]]));
+    expect(out.swept).toBe(false);
+    expect(out.lost).toEqual(["held"]);
+  });
+
+  it("never drops a life below zero", () => {
+    const out = applyLives([e("a", false, null)], lives([["a", 0]]));
+    expect(out.lives.get("a")).toBe(0);
+  });
+
+  it("does not mutate the input map", () => {
+    const before = lives([["a", 3]]);
+    applyLives([e("a", false, 100)], before);
+    expect(before.get("a")).toBe(3);
+  });
+
+  it("every round costs at least one life, which is what bounds the match", () => {
+    // Termination proof in miniature: no round can leave the board unchanged.
+    for (const entries of [
+      [e("a", true, 1), e("b", true, 2)],
+      [e("a", false, 1), e("b", true, 2)],
+      [e("a", false, null), e("b", false, null)],
+    ]) {
+      const out = applyLives(entries, lives([["a", 3], ["b", 3]]));
+      expect(out.lost.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("handles an empty round without throwing", () => {
+    const out = applyLives([], lives([]));
+    expect(out.lost).toEqual([]);
+    expect(out.swept).toBe(false);
   });
 });

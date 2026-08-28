@@ -184,3 +184,34 @@ export function pickEliminated(entries) {
   const ranked = rankRoundResults(entries);
   return ranked.length > 0 ? ranked[ranked.length - 1].id : null;
 }
+
+// LIVES: a wrong or missing answer costs one life.
+//
+// The Sweep rule closes the stalemate hole. When every alive player answers
+// correctly, no life would be lost and the round would change nothing; with no
+// round cap that is an unbounded match, not merely a dull stretch. So a clean
+// sweep costs the slowest correct player a life. It fires only when nobody was
+// already wrong, so normal play keeps its forgiving feel, and it applies at
+// every player count, which is why no separate two-player endgame is needed.
+//
+// Because every round removes at least one life, a match is bounded by the
+// lives on the board: at most startingPlayers * lives - 1 rounds.
+//
+// Returns a new Map; the input is never mutated.
+export function applyLives(entries, livesById) {
+  const missed = entries.filter((x) => !x.correct);
+  const lost = [];
+  let swept = false;
+
+  if (missed.length > 0) {
+    for (const x of missed) lost.push(x.id);
+  } else if (entries.length > 0) {
+    swept = true;
+    const ranked = rankRoundResults(entries);
+    lost.push(ranked[ranked.length - 1].id);
+  }
+
+  const next = new Map(livesById);
+  for (const id of lost) next.set(id, Math.max(0, (next.get(id) ?? 0) - 1));
+  return { lives: next, lost, swept };
+}

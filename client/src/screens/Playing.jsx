@@ -1,4 +1,4 @@
-// Playing: audio round, options, CRT timer, local countdown.
+// Playing: audio or cover round, options, CRT timer, local countdown.
 import { useEffect, useRef, useState } from "react";
 import { EYEBROW, BTN_GHOST, ReactionBar } from "../ui";
 import { Waveform } from "../waveform";
@@ -28,6 +28,9 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, elim
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
+    // COVER rounds have no clip. Leave the primed element alone entirely rather
+    // than pointing it at null, which would abort playback noisily.
+    if (state.clue === "COVER" || !state.audioUrl) return;
 
     let pauseTimer = null;
 
@@ -155,9 +158,19 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, elim
         ghost={ghost && ghost.perRound ? { name: ghost.name, mark: ghost.perRound[state.round - 1] || null } : null}
       />
 
-      <Waveform audioRef={audioRef} />
+      {state.clue === "COVER" ? (
+        <CoverArt
+          token={roundMeta?.artToken ?? null}
+          steps={roundMeta?.artSteps ?? 0}
+          timeRemainingMs={state.timeRemainingMs}
+          roundMs={state.roundMs ?? 10000}
+          round={state.round}
+        />
+      ) : (
+        <Waveform audioRef={audioRef} />
+      )}
 
-      {audioError && (
+      {state.clue !== "COVER" && audioError && (
         <button type="button"
           onClick={retryAudio}
           className="w-full border border-amber px-5 py-3 font-console text-sm uppercase tracking-[0.2em] text-amber transition-colors hover:bg-amber hover:text-black"
@@ -166,7 +179,7 @@ export function Playing({ state, roundMeta, myGuess, hasGuessed, spectator, elim
         </button>
       )}
 
-      {needsTap && (
+      {state.clue !== "COVER" && needsTap && (
         <button type="button" onClick={() => startRef.current()} className={`${BTN_GHOST} w-full`}>
           ▶ Play clip
         </button>
@@ -296,4 +309,57 @@ function useCountdown(timeRemainingMs, round) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
   return seconds;
+}
+
+// Honour the OS reduced-motion preference for the step crossfade.
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(q.matches);
+    const on = () => setReduced(q.matches);
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
+  return reduced;
+}
+
+// The Focus clue: the album cover as a resolution ladder. Every step is a
+// separate request to our own proxy, which refuses any step the round clock has
+// not reached, so there is no sharper image sitting on the client to uncover.
+function CoverArt({ token, steps, timeRemainingMs, roundMs, round }) {
+  const [step, setStep] = useState(0);
+  const reduced = usePrefersReducedMotion();
+
+  // New round, new ladder.
+  useEffect(() => {
+    setStep(0);
+  }, [round, token]);
+
+  useEffect(() => {
+    if (!token || !steps) return;
+    const elapsed = Math.max(0, roundMs - (timeRemainingMs ?? roundMs));
+    const next = Math.min(steps - 1, Math.floor(elapsed / (roundMs / steps)));
+    // Only ever sharpens: a late or out-of-order state update must never
+    // re-blur a cover the player has already seen.
+    setStep((s) => (next > s ? next : s));
+  }, [timeRemainingMs, roundMs, steps, token]);
+
+  if (!token) return null;
+  const base = import.meta.env.VITE_SOCKET_URL || "";
+  return (
+    <div className="grid place-items-center">
+      <img
+        key={`${token}-${step}`}
+        src={`${base}/art/${token}/${step}`}
+        alt="Album cover, partly revealed"
+        width="320"
+        height="320"
+        className={`h-[min(70vw,20rem)] w-[min(70vw,20rem)] border border-rule bg-void object-cover ${
+          reduced ? "" : "animate-popin"
+        }`}
+        style={{ imageRendering: "pixelated" }}
+      />
+    </div>
+  );
 }

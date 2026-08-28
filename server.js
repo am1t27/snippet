@@ -345,7 +345,11 @@ function publicState(room) {
     code: room.code,
     phase: room.phase,
     round: room.round,
-    totalRounds: room.settings.rounds,
+    // Knockout has no fixed length, so there is no total to show. The client
+    // renders a bare round number plus a players-remaining count instead.
+    totalRounds: room.settings.format === "KNOCKOUT" ? null : room.settings.rounds,
+    format: room.settings.format,
+    knockout: room.settings.knockout,
     roundMs: room.settings.roundMs, // round length, so the client bar matches
     mode: room.settings.mode, // TITLE | ARTIST — for client labels only
     clip: room.settings.clip, // RANDOM | INTRO — client picks the audio offset
@@ -367,6 +371,12 @@ function publicState(room) {
       score: p.score,
       hasGuessed: p.hasGuessed,
       lastRoundScore: p.lastRoundScore,
+      eliminated: p.eliminated,
+      placement: p.placement,
+      lives:
+        room.settings.format === "KNOCKOUT" && room.settings.knockout === "LIVES"
+          ? p.lives
+          : null,
     })),
   };
 }
@@ -376,7 +386,9 @@ function broadcastState(room) {
 }
 
 function allGuessed(room) {
-  const active = [...room.players.values()].filter((p) => !p.spectator && p.connected);
+  const active = [...room.players.values()].filter(
+    (p) => !p.spectator && !p.eliminated && p.connected
+  );
   if (active.length === 0) return false;
   for (const p of active) if (!p.hasGuessed) return false;
   return true;
@@ -455,7 +467,7 @@ function startRound(room, n) {
     p.lastCorrect = false;
   }
 
-  const qv = questionValueFor(n - 1);
+  const qv = questionValueFor(n - 1, room.settings.format);
   // SAFE: no correct answer field.
   io.to(room.code).emit("countdown", {
     seconds: 3,
@@ -487,7 +499,7 @@ function beginPlaying(room) {
   const roundIndex = room.round - 1;
   // SAFE: no correct answer field.
   io.to(room.code).emit("roundStart", {
-    questionValue: questionValueFor(roundIndex),
+    questionValue: questionValueFor(roundIndex, room.settings.format),
     maxSpeedBonus: MAX_SPEED_BONUS,
     roundIndex,
   });
@@ -529,7 +541,7 @@ function endRound(room) {
   room.phase = PHASE.ROUND_REVEAL;
 
   const correctName = room.correct ?? null;
-  const questionValue = questionValueFor(room.round - 1);
+  const questionValue = questionValueFor(room.round - 1, room.settings.format);
 
   let fastest = null;
   const scoring = [...room.players.values()].filter((p) => !p.spectator);
@@ -568,6 +580,62 @@ function endRound(room) {
 
   const roundWinner = fastest ? { name: fastest.name, answerTimeSeconds: fastest.answerTimeSeconds } : null;
 
+  // ----- Knockout: decide who leaves this round -----
+  let eliminatedThisRound = [];
+  let swept = false;
+  if (isKnockout(room)) {
+    const joinOrder = [...room.players.keys()];
+    const entries = alivePlayers(room).map((p) => {
+      const g = room.guesses.get(p.id) || null;
+      return {
+        id: p.id,
+        correct: g != null && g.option === correctName,
+        elapsedMs: g != null ? g.elapsedMs : null,
+        score: p.score,
+        joinIndex: joinOrder.indexOf(p.id),
+      };
+    });
+
+    let outIds = [];
+    if (room.settings.knockout === "SLOWEST") {
+      const out = pickEliminated(entries);
+      if (out) outIds = [out];
+    } else {
+      const applied = applyLives(
+        entries,
+        new Map(entries.map((x) => [x.id, room.players.get(x.id).lives]))
+      );
+      swept = applied.swept;
+      for (const [id, left] of applied.lives) {
+        const p = room.players.get(id);
+        if (p) p.lives = left;
+      }
+      outIds = [...applied.lives.keys()].filter((id) => applied.lives.get(id) === 0);
+    }
+
+    // Everyone left can go out at once (LIVES). placementFor still places them,
+    // best score first, so there is no draw state.
+    const batch = outIds
+      .map((id) => room.players.get(id))
+      .filter(Boolean)
+      .map((p) => ({ id: p.id, score: p.score }));
+
+    const placements = placementFor(
+      room.knockout.startingPlayers,
+      room.knockout.eliminatedCount,
+      batch
+    );
+    for (const { id, placement } of placements) {
+      const p = room.players.get(id);
+      if (!p) continue;
+      p.eliminated = true;
+      p.eliminatedRound = room.round;
+      p.placement = placement;
+      eliminatedThisRound.push({ id: p.id, name: p.name, placement });
+    }
+    room.knockout.eliminatedCount += placements.length;
+  }
+
   room.history.push({
     trackName: room.correctTrackName,
     artistName: room.correctArtist,
@@ -587,7 +655,18 @@ function endRound(room) {
     track: { trackName: room.correctTrackName, artistName: room.correctArtist, artworkUrl: room.correctArtwork },
     mode: room.settings.mode,
     round: room.round,
-    totalRounds: room.settings.rounds,
+    totalRounds: isKnockout(room) ? null : room.settings.rounds,
+    format: room.settings.format,
+    knockout: room.settings.knockout,
+    eliminated: eliminatedThisRound,
+    // LIVES only: what everyone has left, and whether Sweep took this one.
+    livesLeft:
+      isKnockout(room) && room.settings.knockout === "LIVES"
+        ? [...room.players.values()]
+            .filter((p) => !p.spectator)
+            .map((p) => ({ id: p.id, lives: p.lives }))
+        : null,
+    swept,
     results,
     roundWinner,
     leaderboard,
@@ -1066,6 +1145,10 @@ io.on("connection", (socket) => {
     }
     if (player.spectator) {
       socket.emit("errorMsg", { message: "Spectators can't guess." });
+      return;
+    }
+    if (player.eliminated) {
+      socket.emit("errorMsg", { message: "You're out. Watch the rest play it out." });
       return;
     }
     // S1 (rate limit): one guess per player per round.

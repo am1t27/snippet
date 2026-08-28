@@ -54,6 +54,7 @@ const MAX_PLAYERS = 8;
 const MAX_SPECTATORS = 16; // watchers allowed per room (don't count toward MAX_PLAYERS)
 const REJOIN_GRACE_MS = 60000; // hold a disconnected player's slot this long mid-game
 const REVEAL_MS = 3000; // pause on the reveal screen before next round
+const KNOCKOUT_REVEAL_MS = 4500; // longer hold: an elimination needs to land
 const EARLY_END_GRACE_MS = 3000; // keep the clip playing this long after everyone answers
 // Chat + reactions. Reactions are a fixed whitelist of arcade-style call-outs
 // (typographic, not emoji — keeps the §12 design rule) floated over the game.
@@ -286,6 +287,26 @@ function finalizeLeave(room, id) {
   }
   const wasHost = !player.spectator && [...room.players.keys()][0] === id;
   const name = player.name;
+
+  // A player who walks out of a knockout still gets a placement, so the
+  // standings stay honest rather than having them silently disappear.
+  const midKnockout =
+    room.settings.format === "KNOCKOUT" &&
+    (room.phase === PHASE.ROUND_PLAYING || room.phase === PHASE.ROUND_REVEAL);
+  if (midKnockout && !player.spectator && !player.eliminated) {
+    const [placed] = placementFor(
+      room.knockout.startingPlayers,
+      room.knockout.eliminatedCount,
+      [{ id: player.id, score: player.score }]
+    );
+    if (placed) {
+      player.eliminated = true;
+      player.eliminatedRound = room.round;
+      player.placement = placed.placement;
+      room.knockout.eliminatedCount += 1;
+    }
+  }
+
   room.players.delete(id);
   io.to(room.code).emit("playerLeft", { name }); // SAFE
 
@@ -300,6 +321,19 @@ function finalizeLeave(room, id) {
   const activePlayers = [...room.players.values()].filter((p) => !p.spectator && p.connected);
   if (activePlayers.length === 1 && (room.phase === PHASE.ROUND_PLAYING || room.phase === PHASE.ROUND_REVEAL)) {
     io.to(room.code).emit("waitingForPlayers", {}); // SAFE
+  }
+  // Disconnections can decide a knockout: if only one fighter is left, the
+  // match is over and they won.
+  if (
+    room.settings.format === "KNOCKOUT" &&
+    (room.phase === PHASE.ROUND_PLAYING || room.phase === PHASE.ROUND_REVEAL) &&
+    aliveCount(room) <= 1 &&
+    room.players.size > 0
+  ) {
+    const last = alivePlayers(room)[0];
+    if (last && last.placement == null) last.placement = 1;
+    gameOver(room);
+    return;
   }
   if (room.phase === PHASE.ROUND_PLAYING && allGuessed(room)) endRoundSoon(room);
   broadcastState(room);
@@ -683,22 +717,55 @@ function endRound(room) {
     if (playerCount(room) === 0) {
       resetToLobby(room);
       broadcastState(room);
-    } else if (room.round >= room.settings.rounds) {
+      return;
+    }
+    if (isKnockout(room)) {
+      // Knockout has NO round limit. It ends only when one player is left.
+      if (aliveCount(room) <= 1) {
+        const last = alivePlayers(room)[0];
+        if (last && last.placement == null) last.placement = 1;
+        gameOver(room);
+      } else {
+        startRound(room, room.round + 1);
+      }
+      return;
+    }
+    if (room.round >= room.settings.rounds) {
       gameOver(room);
     } else {
       startRound(room, room.round + 1);
     }
-  }, REVEAL_MS);
+  }, isKnockout(room) ? KNOCKOUT_REVEAL_MS : REVEAL_MS);
 }
 
 function gameOver(room) {
   clearTimers(room);
   room.phase = PHASE.GAME_OVER;
-  const leaderboard = [...room.players.values()]
-    .filter((p) => !p.spectator)
-    .sort((a, b) => b.score - a.score)
-    .map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score }));
-  io.to(room.code).emit("gameOver", { leaderboard, roundHistory: room.history }); // SAFE: round over
+  const scoring = [...room.players.values()].filter((p) => !p.spectator);
+  const leaderboard = (
+    isKnockout(room)
+      ? // Placement decides knockout, not score. Anyone without a placement
+        // (a match ended early) falls behind those who have one, by score.
+        scoring.slice().sort((a, b) => {
+          const pa = a.placement ?? Number.MAX_SAFE_INTEGER;
+          const pb = b.placement ?? Number.MAX_SAFE_INTEGER;
+          if (pa !== pb) return pa - pb;
+          return b.score - a.score;
+        })
+      : scoring.slice().sort((a, b) => b.score - a.score)
+  ).map((p, i) => ({
+    rank: i + 1,
+    id: p.id,
+    name: p.name,
+    score: p.score,
+    placement: p.placement,
+    eliminatedRound: p.eliminatedRound,
+  }));
+  io.to(room.code).emit("gameOver", {
+    leaderboard,
+    roundHistory: room.history,
+    format: room.settings.format,
+  }); // SAFE: round over
   broadcastState(room);
   // Persist final scores for the global leaderboard (no-op without DATABASE_URL).
   recordMatch({ players: [...room.players.values()], settings: room.settings }, log);

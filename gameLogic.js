@@ -25,6 +25,9 @@ export const DECADE_CHOICES = ["all", "new", "2020s", "2010s", "2000s", "1990s",
 export const CLIP_CHOICES = ["RANDOM", "INTRO"];
 // Match format. CLASSIC is the fixed-round game. KNOCKOUT removes players as
 // the match runs and ends only when one is left standing (no round limit).
+// What the player is given each round. AUDIO plays a clip; COVER shows the
+// album art sharpening across the round and plays nothing at all.
+export const CLUE_CHOICES = ["AUDIO", "COVER"];
 export const FORMAT_CHOICES = ["CLASSIC", "KNOCKOUT"];
 // Knockout rule. SLOWEST eliminates exactly one player per round. LIVES gives
 // everyone a life pool and eliminates them at zero.
@@ -47,6 +50,7 @@ export const DEFAULT_SETTINGS = {
   genre: "hip-hop",
   format: FORMAT_CHOICES[0],
   knockout: KNOCKOUT_CHOICES[0],
+  clue: CLUE_CHOICES[0],
 };
 
 // Coerce an untrusted settings payload into a safe, fully-populated object.
@@ -66,6 +70,7 @@ export function sanitizeSettings(payload) {
     // Always populated so the settings object keeps a fixed shape; ignored
     // unless format is KNOCKOUT.
     knockout: pick(String(p.knockout || "").toUpperCase(), KNOCKOUT_CHOICES),
+    clue: pick(String(p.clue || "").toUpperCase(), CLUE_CHOICES),
   };
 }
 

@@ -265,3 +265,54 @@ describe("songProvider fallback wiring", () => {
     expect(fetch).toHaveBeenCalled();
   });
 });
+
+describe("store (postgres backend)", () => {
+  // The pg pool is faked so the placeholder arithmetic in the multi-row
+  // INSERT can be checked without a database: every $N in the SQL must map
+  // onto the params array that rides along with it.
+  const queries = [];
+
+  beforeEach(async () => {
+    queries.length = 0;
+    vi.doMock("pg", () => ({
+      default: {
+        Pool: class {
+          query(text, params) {
+            queries.push({ text, params });
+            if (params) {
+              const max = Math.max(0, ...[...text.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])));
+              if (max !== params.length) {
+                throw new Error(`bind message supplies ${params.length} parameters, but prepared statement "" requires ${max}`);
+              }
+            }
+            return Promise.resolve({ rows: [{ n: "0", total: "0" }] });
+          }
+          end() { return Promise.resolve(); }
+        },
+      },
+    }));
+    process.env.DATABASE_URL = "postgres://fake";
+    await closeCatalog();
+    await initCatalog(null);
+  });
+
+  afterEach(async () => {
+    await closeCatalog();
+    delete process.env.DATABASE_URL;
+    vi.doUnmock("pg");
+  });
+
+  it("uses the postgres backend when DATABASE_URL is set", () => {
+    expect(catalogBackend()).toBe("postgres");
+  });
+
+  it("multi-row upsert binds exactly as many parameters as the SQL declares", async () => {
+    const rows97 = Array.from({ length: 97 }, (_, i) =>
+      toCatalogRow(raw({ trackId: 5000 + i, trackName: `Track ${i}` }))
+    );
+    await upsertTracks(rows97);
+    const insert = queries.find((q) => q.text.includes("INSERT INTO catalog_tracks"));
+    expect(insert).toBeTruthy();
+    expect(insert.params).toHaveLength(97 * 11);
+  });
+});

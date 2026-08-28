@@ -135,7 +135,7 @@ export async function upsertTracks(list) {
       const values = [];
       const params = [];
       chunk.forEach((r, n) => {
-        const b = n * 10;
+        const b = n * 11;
         values.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8}::text[],$${b + 9},$${b + 10},$${b + 11})`);
         params.push(
           r.trackId, r.trackName, r.artistName, r.artistId, r.previewUrl, r.artworkUrl ?? null,

@@ -39,7 +39,7 @@ export function GameOver({ gameOver, players, myId, onRestart, messages, onChat 
 
       {rest.length > 0 && (
         <div className="animate-rise" style={{ animationDelay: "220ms" }}>
-          <p className={EYEBROW}>High scores</p>
+          <p className={EYEBROW}>{isKnockout ? "Knocked out" : "High scores"}</p>
           <ol className={`mt-3 ${PANEL} divide-y divide-rule`}>
             {rest.map((r, i) => (
               <li key={r.id ?? r.name ?? i} className="flex items-center justify-between px-4 py-2.5">
